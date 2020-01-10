@@ -230,6 +230,7 @@ static void lcd_implementation_status_screen() {
   //   entry to the status screen. Nozzle, bed, and
   //   fan outline bits don't change.
   //
+  /*
   if (PAGE_UNDER(STATUS_SCREENHEIGHT + 1)) {
 
     u8g.drawBitmapP(
@@ -276,6 +277,7 @@ static void lcd_implementation_status_screen() {
       }
     #endif
   }
+  */
 
   #if ENABLED(SDSUPPORT)
     //
@@ -361,17 +363,17 @@ static void lcd_implementation_status_screen() {
   // XYZ Coordinates
   //
 
-  #define XYZ_BASELINE (30 + INFO_FONT_HEIGHT)
+  #define XYZ_BASELINE (1 + INFO_FONT_HEIGHT)
 
   #define X_LABEL_POS  3
   #define X_VALUE_POS 11
   #define XYZ_SPACING 40
 
   #if ENABLED(XYZ_HOLLOW_FRAME)
-    #define XYZ_FRAME_TOP 29
+    #define XYZ_FRAME_TOP 0
     #define XYZ_FRAME_HEIGHT INFO_FONT_HEIGHT + 3
   #else
-    #define XYZ_FRAME_TOP 30
+    #define XYZ_FRAME_TOP 1
     #define XYZ_FRAME_HEIGHT INFO_FONT_HEIGHT + 1
   #endif
 
@@ -423,7 +425,7 @@ static void lcd_implementation_status_screen() {
       u8g.setPrintPos(2 * XYZ_SPACING + X_LABEL_POS, XYZ_BASELINE);
       lcd_printPGM(PSTR(MSG_Z));
       u8g.setPrintPos(2 * XYZ_SPACING + X_VALUE_POS, XYZ_BASELINE);
-      _draw_axis_value(Z_AXIS, zstring, blink);
+      _draw_axis_value(Z_AXIS, zstring, true);
 
       #if DISABLED(XYZ_HOLLOW_FRAME)
         u8g.setColorIndex(1); // black on white

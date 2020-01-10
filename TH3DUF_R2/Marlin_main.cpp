@@ -2499,7 +2499,7 @@ void clean_up_after_endstop_or_probe_move() {
       );
 
       #endif
-  
+
       // @advi3++: Add more debug info
       #if ENABLED(DEBUG_LEVELING_FEATURE)
           if (DEBUGGING(LEVELING))
@@ -2525,7 +2525,7 @@ void clean_up_after_endstop_or_probe_move() {
       #if ENABLED(WANHAO_I3_PLUS)
         // @advi3++: Always stow the sensor, not only when the probe was triggered (otherwise, the sensor stays deployed in case of probing error)
         if (set_bltouch_deployed(false)) return true;
-      #else      
+      #else
         if (probe_triggered && set_bltouch_deployed(false)) return true;
       #endif
     #endif
@@ -4461,7 +4461,7 @@ inline void gcode_G4() {
       #if ENABLED(WANHAO_I3_PLUS)
         // @advi3++
         destination[X_AXIS] -= advi3pp::ADVi3pp::x_probe_offset_from_extruder();
-        destination[Y_AXIS] -= advi3pp::ADVi3pp::y_probe_offset_from_extruder();      
+        destination[Y_AXIS] -= advi3pp::ADVi3pp::y_probe_offset_from_extruder();
       #else
         destination[X_AXIS] -= X_PROBE_OFFSET_FROM_EXTRUDER;
         destination[Y_AXIS] -= Y_PROBE_OFFSET_FROM_EXTRUDER;
@@ -4706,7 +4706,9 @@ inline void gcode_G28(const bool always_home_all) {
         #if ENABLED(Z_SAFE_HOMING)
           home_z_safely();
         #else
-          homeaxis(Z_AXIS);
+          set_axis_is_at_home(Z_AXIS);
+          current_position[Z_AXIS] = 0;
+          //homeaxis(Z_AXIS);
         #endif
 
         #if HOMING_Z_WITH_PROBE && defined(Z_AFTER_PROBING)
@@ -5631,7 +5633,7 @@ void home_all_axes() { gcode_G28(true); }
                                   ++measure_index, nb_measures,
                                   static_cast<int>(xProbe), static_cast<int>(yProbe));
             #endif
-            
+
             measured_z = faux ? 0.001 * random(-100, 101) : probe_pt(xProbe, yProbe, raise_after, verbose_level);
 
             if (isnan(measured_z)) {
@@ -7286,7 +7288,7 @@ inline void gcode_M17() {
    */
   #if ENABLED(WANHAO_I3_PLUS)
     // @advi3++: Remove static since we need to call it from ADVi3++
-    bool ensure_safe_temperature(const AdvancedPauseMode mode=ADVANCED_PAUSE_MODE_PAUSE_PRINT) {    
+    bool ensure_safe_temperature(const AdvancedPauseMode mode=ADVANCED_PAUSE_MODE_PAUSE_PRINT) {
   #else
     static bool ensure_safe_temperature(const AdvancedPauseMode mode=ADVANCED_PAUSE_MODE_PAUSE_PRINT) {
   #endif
@@ -7702,9 +7704,9 @@ inline void gcode_M17() {
   #if ENABLED(WANHAO_I3_PLUS)
     // @advi3++: Remove static since we need to call it from ADVi3++
     void resume_print(const float &slow_load_length=0, const float &fast_load_length=0, const float &purge_length=ADVANCED_PAUSE_PURGE_LENGTH, const int8_t max_beep_count=0) {
-  #else  
+  #else
     static void resume_print(const float &slow_load_length=0, const float &fast_load_length=0, const float &purge_length=ADVANCED_PAUSE_PURGE_LENGTH, const int8_t max_beep_count=0) {
-  #endif    
+  #endif
     if (!did_pause_print) return;
 
     // Re-enable the heaters if they timed out
@@ -8397,7 +8399,7 @@ inline void gcode_M42() {
       if (verbose_level > 2)
         SERIAL_PROTOCOLLNPGM("Positioning the probe...");
     #endif
-    
+
     // Disable bed level correction in M48 because we want the raw data when we probe
 
     #if HAS_LEVELING
@@ -13222,7 +13224,7 @@ void process_parsed_command() {
       case 83: gcode_M83(); break;                                // M83: Set Relative E-Axis
       case 18: case 84: gcode_M18_M84(); break;                   // M18/M84: Disable Steppers / Set Timeout
 
-	  #if DISABLED(SLIM_1284P)      
+	  #if DISABLED(SLIM_1284P)
  		case 85: gcode_M85(); break;                              // M85: Set inactivity stepper shutdown timeout
  	  #endif
 
@@ -13233,7 +13235,7 @@ void process_parsed_command() {
       case 118: gcode_M118(); break;                              // M118: Print a message in the host console
       case 119: gcode_M119(); break;                              // M119: Report Endstop states
 
-	  #if DISABLED(SLIM_1284P)      
+	  #if DISABLED(SLIM_1284P)
 	    case 120: gcode_M120(); break;                              // M120: Enable Endstops
         case 121: gcode_M121(); break;                              // M121: Disable Endstops
 	  #endif
@@ -15291,7 +15293,7 @@ void idle(
   #endif
 
   lcd_update();
-  
+
   #if ENABLED(WANHAO_I3_PLUS)
     // @advi3++: ADVi3++ idle tasks
     advi3pp::ADVi3pp::idle();
@@ -15342,7 +15344,7 @@ void idle(
 void kill(const char* lcd_msg) {
   SERIAL_ERROR_START();
   #if ENABLED(WANHAO_I3_PLUS)
-    // @advi3++: Output the kill msg  
+    // @advi3++: Output the kill msg
     serialprintPGM(lcd_msg);
     SERIAL_PROTOCOLPGM(": ");
   #endif
@@ -15679,7 +15681,7 @@ void setup() {
   #if ENABLED(SDSUPPORT) && !(ENABLED(ULTRA_LCD) && PIN_EXISTS(SD_DETECT))
     card.beginautostart();
   #endif
-  
+
   // SD Card Init Fix //Disabled 11/26/2019 TDH
 
   //#if ENABLED(SDSUPPORT)

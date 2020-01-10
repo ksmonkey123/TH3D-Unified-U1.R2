@@ -176,17 +176,15 @@ uint16_t max_display_update_time = 0;
   void lcd_prepare_menu();
   void lcd_move_menu();
   void lcd_control_menu();
-  void lcd_control_temperature_menu();
-  void lcd_control_motion_menu();
+  void lcd_control_motion_velocity_menu();
+  void lcd_control_motion_jerk_menu();
+  void lcd_control_motion_acceleration_menu();
+  void lcd_control_motion_steps_per_mm_menu();
 
-  #if DISABLED(SLIM_LCD_MENUS)
-    void lcd_control_temperature_preheat_material1_settings_menu();
-    void lcd_control_temperature_preheat_material2_settings_menu();
-  #endif
-
-  #if DISABLED(NO_VOLUMETRICS) || (ENABLED(ADVANCED_PAUSE_FEATURE) && DISABLED(SLIM_LCD_MENUS))
-    void lcd_control_filament_menu();
-  #endif
+  //#if DISABLED(SLIM_LCD_MENUS)
+    //void lcd_control_temperature_preheat_material1_settings_menu();
+    //void lcd_control_temperature_preheat_material2_settings_menu();
+  //#endif
 
   #if ENABLED(LCD_INFO_MENU)
     #if ENABLED(PRINTCOUNTER)
@@ -200,14 +198,6 @@ uint16_t max_display_update_time = 0;
   #if ENABLED(LED_CONTROL_MENU)
     #include "leds.h"
     void lcd_led_menu();
-  #endif
-
-  #if ENABLED(ADVANCED_PAUSE_FEATURE)
-    #if E_STEPPERS > 1 || ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-      void lcd_change_filament_menu();
-    #else
-      void lcd_temp_menu_e0_filament_change();
-    #endif
   #endif
 
   #if ENABLED(DAC_STEPPER_CURRENT)
@@ -1139,11 +1129,9 @@ void lcd_quick_feedback(const bool clear_buttons) {
         MENU_ITEM_EDIT_CALLBACK(bool, MSG_CASE_LIGHT, (bool*)&case_light_on, update_case_light);
     #endif
 
-    if (planner.movesplanned() || IS_SD_PRINTING())
-      MENU_ITEM(submenu, MSG_TUNE, lcd_tune_menu);
-    else
+    if (!(planner.movesplanned() || IS_SD_PRINTING()))
       MENU_ITEM(submenu, MSG_PREPARE, lcd_prepare_menu);
-    
+
     #if ENABLED(LED_CONTROL_MENU)
       MENU_ITEM(submenu, MSG_LED_CONTROL, lcd_led_menu);
     #endif
@@ -1443,78 +1431,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
     #endif
 
     //
-    // Nozzle:
-    // Nozzle [1-4]:
-    //
-    #if HOTENDS == 1
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE, &thermalManager.target_temperature[0], 0, HEATER_0_MAXTEMP - 15, watch_temp_callback_E0);
-    #else // HOTENDS > 1
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N1, &thermalManager.target_temperature[0], 0, HEATER_0_MAXTEMP - 15, watch_temp_callback_E0);
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N2, &thermalManager.target_temperature[1], 0, HEATER_1_MAXTEMP - 15, watch_temp_callback_E1);
-      #if HOTENDS > 2
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N3, &thermalManager.target_temperature[2], 0, HEATER_2_MAXTEMP - 15, watch_temp_callback_E2);
-        #if HOTENDS > 3
-          MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N4, &thermalManager.target_temperature[3], 0, HEATER_3_MAXTEMP - 15, watch_temp_callback_E3);
-          #if HOTENDS > 4
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N5, &thermalManager.target_temperature[4], 0, HEATER_4_MAXTEMP - 15, watch_temp_callback_E4);
-          #endif // HOTENDS > 4
-        #endif // HOTENDS > 3
-      #endif // HOTENDS > 2
-    #endif // HOTENDS > 1
-
-    //
-    // Bed:
-    //
-    #if HAS_HEATED_BED
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_BED, &thermalManager.target_temperature_bed, 0, BED_MAXTEMP - 15, watch_temp_callback_bed);
-    #endif
-
-    //
-    // Fan Speed:
-    //
-    #if FAN_COUNT > 0
-      #if HAS_FAN0
-        MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_FAN_SPEED FAN_SPEED_1_SUFFIX, &fanSpeeds[0], 0, 255);
-        #if ENABLED(EXTRA_FAN_SPEED)
-          MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_EXTRA_FAN_SPEED FAN_SPEED_1_SUFFIX, &new_fanSpeeds[0], 3, 255);
-        #endif
-      #endif
-      #if HAS_FAN1
-        MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_FAN_SPEED " 2", &fanSpeeds[1], 0, 255);
-        #if ENABLED(EXTRA_FAN_SPEED)
-          MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_EXTRA_FAN_SPEED " 2", &new_fanSpeeds[1], 3, 255);
-        #endif
-      #endif
-      #if HAS_FAN2
-        MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_FAN_SPEED " 3", &fanSpeeds[2], 0, 255);
-        #if ENABLED(EXTRA_FAN_SPEED)
-          MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_EXTRA_FAN_SPEED " 3", &new_fanSpeeds[2], 3, 255);
-        #endif
-      #endif
-    #endif // FAN_COUNT > 0
-
-    //
-    // Flow:
-    // Flow [1-5]:
-    //
-    #if EXTRUDERS == 1
-      MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW, &planner.flow_percentage[0], 10, 999, _lcd_refresh_e_factor_0);
-    #else // EXTRUDERS > 1
-      MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW, &planner.flow_percentage[active_extruder], 10, 999, _lcd_refresh_e_factor);
-      MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW MSG_N1, &planner.flow_percentage[0], 10, 999, _lcd_refresh_e_factor_0);
-      MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW MSG_N2, &planner.flow_percentage[1], 10, 999, _lcd_refresh_e_factor_1);
-      #if EXTRUDERS > 2
-        MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW MSG_N3, &planner.flow_percentage[2], 10, 999, _lcd_refresh_e_factor_2);
-        #if EXTRUDERS > 3
-          MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW MSG_N4, &planner.flow_percentage[3], 10, 999, _lcd_refresh_e_factor_3);
-          #if EXTRUDERS > 4
-            MENU_ITEM_EDIT_CALLBACK(int3, MSG_FLOW MSG_N5, &planner.flow_percentage[4], 10, 999, _lcd_refresh_e_factor_4);
-          #endif // EXTRUDERS > 4
-        #endif // EXTRUDERS > 3
-      #endif // EXTRUDERS > 2
-    #endif // EXTRUDERS > 1
-
-    //
     // Babystep X:
     // Babystep Y:
     // Babystep Z:
@@ -1528,20 +1444,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
         MENU_ITEM(submenu, MSG_ZPROBE_ZOFFSET, lcd_babystep_zoffset);
       #else
         MENU_ITEM(submenu, MSG_BABYSTEP_Z, lcd_babystep_z);
-      #endif
-    #endif
-
-    //
-    // Change filament
-    //
-    #if ENABLED(ADVANCED_PAUSE_FEATURE)
-      #if E_STEPPERS == 1 && !ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-        if (thermalManager.targetHotEnoughToExtrude(active_extruder))
-          MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 B0"));
-        else
-          MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_temp_menu_e0_filament_change);
-      #else
-        MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_change_filament_menu);
       #endif
     #endif
 
@@ -2766,46 +2668,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
     //
     MENU_ITEM(gcode, MSG_DISABLE_STEPPERS, PSTR("M84"));
 
-    //
-    // Change filament
-    //
-    #if ENABLED(ADVANCED_PAUSE_FEATURE)
-      if (!IS_SD_FILE_OPEN()) {
-        #if E_STEPPERS == 1 && !ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-          if (thermalManager.targetHotEnoughToExtrude(active_extruder))
-            MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 B0"));
-          else
-            MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_temp_menu_e0_filament_change);
-        #else
-          MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_change_filament_menu);
-        #endif
-      }
-    #endif // ADVANCED_PAUSE_FEATURE
-
-    #if HAS_TEMP_HOTEND
-
-      //
-      // Cooldown
-      //
-      bool has_heat = false;
-      HOTEND_LOOP() if (thermalManager.target_temperature[HOTEND_INDEX]) { has_heat = true; break; }
-      #if HAS_HEATED_BED
-        if (thermalManager.target_temperature_bed) has_heat = true;
-      #endif
-      if (has_heat) MENU_ITEM(function, MSG_COOLDOWN, lcd_cooldown);
-
-      //
-      // Preheat for Material 1 and 2
-      //
-      #if TEMP_SENSOR_1 != 0 || TEMP_SENSOR_2 != 0 || TEMP_SENSOR_3 != 0 || TEMP_SENSOR_4 != 0 || HAS_HEATED_BED
-        MENU_ITEM(submenu, MSG_PREHEAT_1, lcd_preheat_m1_menu);
-        MENU_ITEM(submenu, MSG_PREHEAT_2, lcd_preheat_m2_menu);
-      #else
-        MENU_ITEM(function, MSG_PREHEAT_1, lcd_preheat_m1_e0_only);
-        MENU_ITEM(function, MSG_PREHEAT_2, lcd_preheat_m2_e0_only);
-      #endif
-
-    #endif // HAS_TEMP_HOTEND
 
     //
     // BLTouch Self-Test and Reset
@@ -3265,70 +3127,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
     }
     else
       MENU_ITEM(gcode, MSG_AUTO_HOME, PSTR("G28"));
-
-    #if ENABLED(SWITCHING_EXTRUDER) || ENABLED(SWITCHING_NOZZLE)
-
-      #if EXTRUDERS == 4
-        switch (active_extruder) {
-          case 0: MENU_ITEM(gcode, MSG_SELECT " " MSG_E2, PSTR("T1")); break;
-          case 1: MENU_ITEM(gcode, MSG_SELECT " " MSG_E1, PSTR("T0")); break;
-          case 2: MENU_ITEM(gcode, MSG_SELECT " " MSG_E4, PSTR("T3")); break;
-          case 3: MENU_ITEM(gcode, MSG_SELECT " " MSG_E3, PSTR("T2")); break;
-        }
-      #elif EXTRUDERS == 3
-        if (active_extruder < 2) {
-          if (active_extruder)
-            MENU_ITEM(gcode, MSG_SELECT " " MSG_E1, PSTR("T0"));
-          else
-            MENU_ITEM(gcode, MSG_SELECT " " MSG_E2, PSTR("T1"));
-        }
-      #else
-        if (active_extruder)
-          MENU_ITEM(gcode, MSG_SELECT " " MSG_E1, PSTR("T0"));
-        else
-          MENU_ITEM(gcode, MSG_SELECT " " MSG_E2, PSTR("T1"));
-      #endif
-
-    #elif ENABLED(DUAL_X_CARRIAGE)
-
-      if (active_extruder)
-        MENU_ITEM(gcode, MSG_SELECT " " MSG_E1, PSTR("T0"));
-      else
-        MENU_ITEM(gcode, MSG_SELECT " " MSG_E2, PSTR("T1"));
-
-    #endif
-
-    #if ENABLED(SWITCHING_EXTRUDER) || ENABLED(SWITCHING_NOZZLE)
-
-      // Only the current...
-      MENU_ITEM(submenu, MSG_MOVE_E, lcd_move_get_e_amount);
-      // ...and the non-switching
-      #if E_MANUAL == 5
-        MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E5, lcd_move_get_e4_amount);
-      #elif E_MANUAL == 3
-        MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E3, lcd_move_get_e2_amount);
-      #endif
-
-    #else
-
-      // Independent extruders with one E-stepper per hotend
-      MENU_ITEM(submenu, MSG_MOVE_E, lcd_move_get_e_amount);
-      #if E_MANUAL > 1
-        MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E1, lcd_move_get_e0_amount);
-        MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E2, lcd_move_get_e1_amount);
-        #if E_MANUAL > 2
-          MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E3, lcd_move_get_e2_amount);
-          #if E_MANUAL > 3
-            MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E4, lcd_move_get_e3_amount);
-            #if E_MANUAL > 4
-              MENU_ITEM(submenu, MSG_MOVE_E MSG_MOVE_E5, lcd_move_get_e4_amount);
-            #endif // E_MANUAL > 4
-          #endif // E_MANUAL > 3
-        #endif // E_MANUAL > 2
-      #endif // E_MANUAL > 1
-
-    #endif
-
     END_MENU();
   }
 
@@ -3366,16 +3164,20 @@ void lcd_quick_feedback(const bool clear_buttons) {
   void lcd_control_menu() {
     START_MENU();
     MENU_BACK(MSG_MAIN);
-    MENU_ITEM(submenu, MSG_TEMPERATURE, lcd_control_temperature_menu);
-    MENU_ITEM(submenu, MSG_MOTION, lcd_control_motion_menu);
 
-    #if DISABLED(NO_VOLUMETRICS) || (ENABLED(ADVANCED_PAUSE_FEATURE) && DISABLED(SLIM_LCD_MENUS))
-      #if ENABLED(BLTOUCH) && ENABLED(SLIM_1284P)
-        //nothing
-      #else
-        MENU_ITEM(submenu, MSG_FILAMENT, lcd_control_filament_menu);
-      #endif
-    #elif ENABLED(LIN_ADVANCE)
+          // M203 / M205 - Feedrate items
+          MENU_ITEM(submenu, MSG_VELOCITY, lcd_control_motion_velocity_menu);
+
+          // M201 - Acceleration items
+          MENU_ITEM(submenu, MSG_ACCELERATION, lcd_control_motion_acceleration_menu);
+
+          // M205 - Max Jerk
+          MENU_ITEM(submenu, MSG_JERK, lcd_control_motion_jerk_menu);
+
+          // M92 - Steps Per mm
+          MENU_ITEM(submenu, MSG_STEPS_PER_MM, lcd_control_motion_steps_per_mm_menu);
+
+    #if ENABLED(LIN_ADVANCE)
       MENU_ITEM_EDIT(float52, MSG_ADVANCE_K, &planner.extruder_advance_K, 0, 999);
     #endif
 
@@ -3489,146 +3291,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
 
   #endif // PIDTEMP
 
-  /**
-   *
-   * "Control" > "Temperature" submenu
-   *
-   */
-  void lcd_control_temperature_menu() {
-    START_MENU();
-
-    //
-    // ^ Control
-    //
-    MENU_BACK(MSG_CONTROL);
-
-    //
-    // Nozzle:
-    // Nozzle [1-5]:
-    //
-    #if HOTENDS == 1
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE, &thermalManager.target_temperature[0], 0, HEATER_0_MAXTEMP - 15, watch_temp_callback_E0);
-    #else // HOTENDS > 1
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N1, &thermalManager.target_temperature[0], 0, HEATER_0_MAXTEMP - 15, watch_temp_callback_E0);
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N2, &thermalManager.target_temperature[1], 0, HEATER_1_MAXTEMP - 15, watch_temp_callback_E1);
-      #if HOTENDS > 2
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N3, &thermalManager.target_temperature[2], 0, HEATER_2_MAXTEMP - 15, watch_temp_callback_E2);
-        #if HOTENDS > 3
-          MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N4, &thermalManager.target_temperature[3], 0, HEATER_3_MAXTEMP - 15, watch_temp_callback_E3);
-          #if HOTENDS > 4
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_NOZZLE MSG_N5, &thermalManager.target_temperature[4], 0, HEATER_4_MAXTEMP - 15, watch_temp_callback_E4);
-          #endif // HOTENDS > 4
-        #endif // HOTENDS > 3
-      #endif // HOTENDS > 2
-    #endif // HOTENDS > 1
-
-    //
-    // Bed:
-    //
-    #if HAS_HEATED_BED
-      MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_BED, &thermalManager.target_temperature_bed, 0, BED_MAXTEMP - 15, watch_temp_callback_bed);
-    #endif
-
-    //
-    // Fan Speed:
-    //
-    #if FAN_COUNT > 0
-      #if HAS_FAN0
-        MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_FAN_SPEED FAN_SPEED_1_SUFFIX, &fanSpeeds[0], 0, 255);
-        #if ENABLED(EXTRA_FAN_SPEED)
-          MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_EXTRA_FAN_SPEED FAN_SPEED_1_SUFFIX, &new_fanSpeeds[0], 3, 255);
-        #endif
-      #endif
-      #if HAS_FAN1
-        MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_FAN_SPEED " 2", &fanSpeeds[1], 0, 255);
-        #if ENABLED(EXTRA_FAN_SPEED)
-          MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_EXTRA_FAN_SPEED " 2", &new_fanSpeeds[1], 3, 255);
-        #endif
-      #endif
-      #if HAS_FAN2
-        MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_FAN_SPEED " 3", &fanSpeeds[2], 0, 255);
-        #if ENABLED(EXTRA_FAN_SPEED)
-          MENU_MULTIPLIER_ITEM_EDIT(int3, MSG_EXTRA_FAN_SPEED " 3", &new_fanSpeeds[2], 3, 255);
-        #endif
-      #endif
-    #endif // FAN_COUNT > 0
-
-    //
-    // Autotemp, Min, Max, Fact
-    //
-    #if ENABLED(AUTOTEMP) && HAS_TEMP_HOTEND
-      MENU_ITEM_EDIT(bool, MSG_AUTOTEMP, &planner.autotemp_enabled);
-      MENU_ITEM_EDIT(float3, MSG_MIN, &planner.autotemp_min, 0, float(HEATER_0_MAXTEMP) - 15);
-      MENU_ITEM_EDIT(float3, MSG_MAX, &planner.autotemp_max, 0, float(HEATER_0_MAXTEMP) - 15);
-      MENU_ITEM_EDIT(float52, MSG_FACTOR, &planner.autotemp_factor, 0, 10);
-    #endif
-
-    //
-    // PID-P, PID-I, PID-D, PID-C, PID Autotune
-    // PID-P E1, PID-I E1, PID-D E1, PID-C E1, PID Autotune E1
-    // PID-P E2, PID-I E2, PID-D E2, PID-C E2, PID Autotune E2
-    // PID-P E3, PID-I E3, PID-D E3, PID-C E3, PID Autotune E3
-    // PID-P E4, PID-I E4, PID-D E4, PID-C E4, PID Autotune E4
-    // PID-P E5, PID-I E5, PID-D E5, PID-C E5, PID Autotune E5
-    //
-    #if ENABLED(PIDTEMP)
-
-      #define _PID_BASE_MENU_ITEMS(ELABEL, eindex) \
-        raw_Ki = unscalePID_i(PID_PARAM(Ki, eindex)); \
-        raw_Kd = unscalePID_d(PID_PARAM(Kd, eindex)); \
-        MENU_ITEM_EDIT(float52sign, MSG_PID_P ELABEL, &PID_PARAM(Kp, eindex), 1, 9990); \
-        MENU_ITEM_EDIT_CALLBACK(float52sign, MSG_PID_I ELABEL, &raw_Ki, 0.01f, 9990, copy_and_scalePID_i_E ## eindex); \
-        MENU_ITEM_EDIT_CALLBACK(float52sign, MSG_PID_D ELABEL, &raw_Kd, 1, 9990, copy_and_scalePID_d_E ## eindex)
-
-      #if ENABLED(PID_EXTRUSION_SCALING)
-        #define _PID_MENU_ITEMS(ELABEL, eindex) \
-          _PID_BASE_MENU_ITEMS(ELABEL, eindex); \
-          MENU_ITEM_EDIT(float3, MSG_PID_C ELABEL, &PID_PARAM(Kc, eindex), 1, 9990)
-      #else
-        #define _PID_MENU_ITEMS(ELABEL, eindex) _PID_BASE_MENU_ITEMS(ELABEL, eindex)
-      #endif
-
-      #if ENABLED(PID_AUTOTUNE_MENU)
-        #define PID_MENU_ITEMS(ELABEL, eindex) \
-          _PID_MENU_ITEMS(ELABEL, eindex); \
-          MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(int3, MSG_PID_AUTOTUNE ELABEL, &autotune_temp[eindex], 150, heater_maxtemp[eindex] - 15, lcd_autotune_callback_E ## eindex)
-      #else
-        #define PID_MENU_ITEMS(ELABEL, eindex) _PID_MENU_ITEMS(ELABEL, eindex)
-      #endif
-
-      #if ENABLED(PID_PARAMS_PER_HOTEND) && HOTENDS > 1
-        PID_MENU_ITEMS(" " MSG_E1, 0);
-        PID_MENU_ITEMS(" " MSG_E2, 1);
-        #if HOTENDS > 2
-          PID_MENU_ITEMS(" " MSG_E3, 2);
-          #if HOTENDS > 3
-            PID_MENU_ITEMS(" " MSG_E4, 3);
-            #if HOTENDS > 4
-              PID_MENU_ITEMS(" " MSG_E5, 4);
-            #endif // HOTENDS > 4
-          #endif // HOTENDS > 3
-        #endif // HOTENDS > 2
-      #else // !PID_PARAMS_PER_HOTEND || HOTENDS == 1
-        PID_MENU_ITEMS("", 0);
-      #endif // !PID_PARAMS_PER_HOTEND || HOTENDS == 1
-
-    #endif // PIDTEMP
-
-    #if DISABLED(SLIM_LCD_MENUS)
-      //
-      // Preheat Material 1 conf
-      //
-      MENU_ITEM(submenu, MSG_PREHEAT_1_SETTINGS, lcd_control_temperature_preheat_material1_settings_menu);
-
-      //
-      // Preheat Material 2 conf
-      //
-      MENU_ITEM(submenu, MSG_PREHEAT_2_SETTINGS, lcd_control_temperature_preheat_material2_settings_menu);
-    #endif
-
-    END_MENU();
-  }
-
   #if DISABLED(SLIM_LCD_MENUS)
 
     void _lcd_control_temperature_preheat_settings_menu(const uint8_t material) {
@@ -3668,14 +3330,14 @@ void lcd_quick_feedback(const bool clear_buttons) {
      * "Temperature" > "Preheat Material 1 conf" submenu
      *
      */
-    void lcd_control_temperature_preheat_material1_settings_menu() { _lcd_control_temperature_preheat_settings_menu(0); }
+    //void lcd_control_temperature_preheat_material1_settings_menu() { _lcd_control_temperature_preheat_settings_menu(0); }
 
     /**
      *
      * "Temperature" > "Preheat Material 2 conf" submenu
      *
      */
-    void lcd_control_temperature_preheat_material2_settings_menu() { _lcd_control_temperature_preheat_settings_menu(1); }
+    //void lcd_control_temperature_preheat_material2_settings_menu() { _lcd_control_temperature_preheat_settings_menu(1); }
 
     void _reset_acceleration_rates() { planner.reset_acceleration_rates(); }
     #if ENABLED(DISTINCT_E_FACTORS)
@@ -3724,23 +3386,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
       MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_B, &planner.max_feedrate_mm_s[B_AXIS], 1, 999);
       MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_C, &planner.max_feedrate_mm_s[C_AXIS], 1, 999);
 
-      #if ENABLED(DISTINCT_E_FACTORS)
-        MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E, &planner.max_feedrate_mm_s[E_AXIS + active_extruder], 1, 999);
-        MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E1, &planner.max_feedrate_mm_s[E_AXIS], 1, 999);
-        MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E2, &planner.max_feedrate_mm_s[E_AXIS + 1], 1, 999);
-        #if E_STEPPERS > 2
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E3, &planner.max_feedrate_mm_s[E_AXIS + 2], 1, 999);
-          #if E_STEPPERS > 3
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E4, &planner.max_feedrate_mm_s[E_AXIS + 3], 1, 999);
-            #if E_STEPPERS > 4
-              MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E5, &planner.max_feedrate_mm_s[E_AXIS + 4], 1, 999);
-            #endif // E_STEPPERS > 4
-          #endif // E_STEPPERS > 3
-        #endif // E_STEPPERS > 2
-      #else
-        MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMAX MSG_E, &planner.max_feedrate_mm_s[E_AXIS], 1, 999);
-      #endif
-
       // M205 S Min Feedrate
       MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VMIN, &planner.min_feedrate_mm_s, 0, 999);
 
@@ -3759,7 +3404,7 @@ void lcd_quick_feedback(const bool clear_buttons) {
       MENU_MULTIPLIER_ITEM_EDIT(float5, MSG_ACC, &planner.acceleration, 10, 99000);
 
       // M204 R Retract Acceleration
-      MENU_MULTIPLIER_ITEM_EDIT(float5, MSG_A_RETRACT, &planner.retract_acceleration, 100, 99000);
+      //MENU_MULTIPLIER_ITEM_EDIT(float5, MSG_A_RETRACT, &planner.retract_acceleration, 100, 99000);
 
       // M204 T Travel Acceleration
       MENU_MULTIPLIER_ITEM_EDIT(float5, MSG_A_TRAVEL, &planner.travel_acceleration, 100, 99000);
@@ -3768,23 +3413,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
       MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_A, &planner.max_acceleration_mm_per_s2[A_AXIS], 100, 99000, _reset_acceleration_rates);
       MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_B, &planner.max_acceleration_mm_per_s2[B_AXIS], 100, 99000, _reset_acceleration_rates);
       MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_C, &planner.max_acceleration_mm_per_s2[C_AXIS], 10, 99000, _reset_acceleration_rates);
-
-      #if ENABLED(DISTINCT_E_FACTORS)
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E, &planner.max_acceleration_mm_per_s2[E_AXIS + active_extruder], 100, 99000, _reset_acceleration_rates);
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E1, &planner.max_acceleration_mm_per_s2[E_AXIS], 100, 99000, _reset_e0_acceleration_rate);
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E2, &planner.max_acceleration_mm_per_s2[E_AXIS + 1], 100, 99000, _reset_e1_acceleration_rate);
-        #if E_STEPPERS > 2
-          MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E3, &planner.max_acceleration_mm_per_s2[E_AXIS + 2], 100, 99000, _reset_e2_acceleration_rate);
-          #if E_STEPPERS > 3
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E4, &planner.max_acceleration_mm_per_s2[E_AXIS + 3], 100, 99000, _reset_e3_acceleration_rate);
-            #if E_STEPPERS > 4
-              MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E5, &planner.max_acceleration_mm_per_s2[E_AXIS + 4], 100, 99000, _reset_e4_acceleration_rate);
-            #endif // E_STEPPERS > 4
-          #endif // E_STEPPERS > 3
-        #endif // E_STEPPERS > 2
-      #else
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(long5, MSG_AMAX MSG_E, &planner.max_acceleration_mm_per_s2[E_AXIS], 100, 99000, _reset_acceleration_rates);
-      #endif
 
       END_MENU();
     }
@@ -3804,7 +3432,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
         #else
           MENU_MULTIPLIER_ITEM_EDIT(float52sign, MSG_VC_JERK, &planner.max_jerk[C_AXIS], 0.1f, 990);
         #endif
-        MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_VE_JERK, &planner.max_jerk[E_AXIS], 1, 990);
       #endif
 
       END_MENU();
@@ -3817,156 +3444,10 @@ void lcd_quick_feedback(const bool clear_buttons) {
       MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_ASTEPS, &planner.axis_steps_per_mm[A_AXIS], 5, 9999, _planner_refresh_positioning);
       MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_BSTEPS, &planner.axis_steps_per_mm[B_AXIS], 5, 9999, _planner_refresh_positioning);
       MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_CSTEPS, &planner.axis_steps_per_mm[C_AXIS], 5, 9999, _planner_refresh_positioning);
-      #if ENABLED(DISTINCT_E_FACTORS)
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_ESTEPS, &planner.axis_steps_per_mm[E_AXIS + active_extruder], 5, 9999, _planner_refresh_positioning);
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_E1STEPS, &planner.axis_steps_per_mm[E_AXIS], 5, 9999, _planner_refresh_e0_positioning);
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_E2STEPS, &planner.axis_steps_per_mm[E_AXIS + 1], 5, 9999, _planner_refresh_e1_positioning);
-        #if E_STEPPERS > 2
-          MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_E3STEPS, &planner.axis_steps_per_mm[E_AXIS + 2], 5, 9999, _planner_refresh_e2_positioning);
-          #if E_STEPPERS > 3
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_E4STEPS, &planner.axis_steps_per_mm[E_AXIS + 3], 5, 9999, _planner_refresh_e3_positioning);
-            #if E_STEPPERS > 4
-              MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_E5STEPS, &planner.axis_steps_per_mm[E_AXIS + 4], 5, 9999, _planner_refresh_e4_positioning);
-            #endif // E_STEPPERS > 4
-          #endif // E_STEPPERS > 3
-        #endif // E_STEPPERS > 2
-      #else
-        MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float62, MSG_ESTEPS, &planner.axis_steps_per_mm[E_AXIS], 5, 9999, _planner_refresh_positioning);
-      #endif
-
       END_MENU();
     }
 
   #endif // !SLIM_LCD_MENUS
-
-  /**
-   *
-   * "Control" > "Motion" submenu
-   *
-   */
-
-  void lcd_control_motion_menu() {
-    START_MENU();
-    MENU_BACK(MSG_CONTROL);
-
-    #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
-      MENU_ITEM(submenu, MSG_ZPROBE_ZOFFSET, lcd_babystep_zoffset);
-    #elif HAS_BED_PROBE
-      MENU_ITEM_EDIT(float52, MSG_ZPROBE_ZOFFSET, &zprobe_zoffset, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX);
-    #endif
-
-    #if DISABLED(SLIM_LCD_MENUS)
-
-      // M203 / M205 - Feedrate items
-      MENU_ITEM(submenu, MSG_VELOCITY, lcd_control_motion_velocity_menu);
-
-      // M201 - Acceleration items
-      MENU_ITEM(submenu, MSG_ACCELERATION, lcd_control_motion_acceleration_menu);
-
-      // M205 - Max Jerk
-      MENU_ITEM(submenu, MSG_JERK, lcd_control_motion_jerk_menu);
-
-      // M92 - Steps Per mm
-      MENU_ITEM(submenu, MSG_STEPS_PER_MM, lcd_control_motion_steps_per_mm_menu);
-
-    #endif // !SLIM_LCD_MENUS
-
-    // M540 S - Abort on endstop hit when SD printing
-    #if ENABLED(ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
-      MENU_ITEM_EDIT(bool, MSG_ENDSTOP_ABORT, &planner.abort_on_endstop_hit);
-    #endif
-
-    END_MENU();
-  }
-
-  #if DISABLED(NO_VOLUMETRICS) || (ENABLED(ADVANCED_PAUSE_FEATURE) && DISABLED(SLIM_LCD_MENUS))
-    /**
-     *
-     * "Control" > "Filament" submenu
-     *
-     */
-    void lcd_control_filament_menu() {
-      START_MENU();
-      MENU_BACK(MSG_CONTROL);
-
-      #if ENABLED(LIN_ADVANCE)
-        MENU_ITEM_EDIT(float52, MSG_ADVANCE_K, &planner.extruder_advance_K, 0, 999);
-      #endif
-
-      #if DISABLED(NO_VOLUMETRICS)
-        MENU_ITEM_EDIT_CALLBACK(bool, MSG_VOLUMETRIC_ENABLED, &parser.volumetric_enabled, planner.calculate_volumetric_multipliers);
-
-        if (parser.volumetric_enabled) {
-          #if EXTRUDERS == 1
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM, &planner.filament_size[0], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-          #else // EXTRUDERS > 1
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM, &planner.filament_size[active_extruder], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM MSG_DIAM_E1, &planner.filament_size[0], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-            MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM MSG_DIAM_E2, &planner.filament_size[1], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-            #if EXTRUDERS > 2
-              MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM MSG_DIAM_E3, &planner.filament_size[2], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-            #if EXTRUDERS > 3
-              MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM MSG_DIAM_E4, &planner.filament_size[3], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-              #if EXTRUDERS > 4
-                  MENU_MULTIPLIER_ITEM_EDIT_CALLBACK(float43, MSG_FILAMENT_DIAM MSG_DIAM_E5, &planner.filament_size[4], 1.5f, 3.25f, planner.calculate_volumetric_multipliers);
-                #endif // EXTRUDERS > 4
-              #endif // EXTRUDERS > 3
-            #endif // EXTRUDERS > 2
-          #endif // EXTRUDERS > 1
-        }
-      #endif
-
-      #if ENABLED(ADVANCED_PAUSE_FEATURE)
-        const float extrude_maxlength =
-          #if ENABLED(PREVENT_LENGTHY_EXTRUDE)
-            EXTRUDE_MAXLENGTH
-          #else
-            999
-          #endif
-        ;
-
-        #if EXTRUDERS == 1
-          #if DISABLED(SLIM_LCD_MENUS)
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD, &filament_change_unload_length[0], 0, extrude_maxlength);
-          #endif
-        #else // EXTRUDERS > 1
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD, &filament_change_unload_length[active_extruder], 0, extrude_maxlength);
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD MSG_DIAM_E1, &filament_change_unload_length[0], 0, extrude_maxlength);
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD MSG_DIAM_E2, &filament_change_unload_length[1], 0, extrude_maxlength);
-          #if EXTRUDERS > 2
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD MSG_DIAM_E3, &filament_change_unload_length[2], 0, extrude_maxlength);
-          #if EXTRUDERS > 3
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD MSG_DIAM_E4, &filament_change_unload_length[3], 0, extrude_maxlength);
-            #if EXTRUDERS > 4
-                MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_UNLOAD MSG_DIAM_E5, &filament_change_unload_length[4], 0, extrude_maxlength);
-              #endif // EXTRUDERS > 4
-            #endif // EXTRUDERS > 3
-          #endif // EXTRUDERS > 2
-        #endif // EXTRUDERS > 1
-
-        #if EXTRUDERS == 1
-          #if DISABLED(SLIM_LCD_MENUS)
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD, &filament_change_load_length[0], 0, extrude_maxlength);
-          #endif
-        #else // EXTRUDERS > 1
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD, &filament_change_load_length[active_extruder], 0, extrude_maxlength);
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD MSG_DIAM_E1, &filament_change_load_length[0], 0, extrude_maxlength);
-          MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD MSG_DIAM_E2, &filament_change_load_length[1], 0, extrude_maxlength);
-          #if EXTRUDERS > 2
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD MSG_DIAM_E3, &filament_change_load_length[2], 0, extrude_maxlength);
-          #if EXTRUDERS > 3
-            MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD MSG_DIAM_E4, &filament_change_load_length[3], 0, extrude_maxlength);
-            #if EXTRUDERS > 4
-                MENU_MULTIPLIER_ITEM_EDIT(float3, MSG_FILAMENT_LOAD MSG_DIAM_E5, &filament_change_load_length[4], 0, extrude_maxlength);
-              #endif // EXTRUDERS > 4
-            #endif // EXTRUDERS > 3
-          #endif // EXTRUDERS > 2
-        #endif // EXTRUDERS > 1
-      #endif
-
-      END_MENU();
-    }
-  #endif // !NO_VOLUMETRICS || ADVANCED_PAUSE_FEATURE
 
   /**
    *
@@ -4313,519 +3794,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
     }
 
   #endif // LED_CONTROL_MENU
-
-  /**
-   *
-   * Filament Change Feature Screens
-   *
-   */
-  #if ENABLED(ADVANCED_PAUSE_FEATURE)
-
-    /**
-     *
-     * "Change Filament" > "Change/Unload/Load Filament" submenu
-     *
-     */
-    static AdvancedPauseMode _change_filament_temp_mode;
-    static int8_t _change_filament_temp_extruder;
-
-    static const char* _change_filament_temp_command() {
-      switch (_change_filament_temp_mode) {
-        case ADVANCED_PAUSE_MODE_LOAD_FILAMENT:
-          return PSTR("M701 T%d");
-        case ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT:
-          return _change_filament_temp_extruder >= 0 ? PSTR("M702 T%d") : PSTR("M702 ;%d");
-        case ADVANCED_PAUSE_MODE_PAUSE_PRINT:
-        default:
-          return PSTR("M600 B0 T%d");
-      }
-      return PSTR(MSG_FILAMENTCHANGE);
-    }
-
-    void _change_filament_temp(const uint8_t index) {
-      char cmd[11];
-      sprintf_P(cmd, _change_filament_temp_command(), _change_filament_temp_extruder);
-      thermalManager.setTargetHotend(index == 1 ? PREHEAT_1_TEMP_HOTEND : PREHEAT_2_TEMP_HOTEND, _change_filament_temp_extruder);
-      lcd_enqueue_command(cmd);
-    }
-    void _lcd_change_filament_temp_1_menu() { _change_filament_temp(1); }
-    void _lcd_change_filament_temp_2_menu() { _change_filament_temp(2); }
-
-    static const char* change_filament_header(const AdvancedPauseMode mode) {
-      switch (mode) {
-        case ADVANCED_PAUSE_MODE_LOAD_FILAMENT:
-          return PSTR(MSG_FILAMENTLOAD);
-        case ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT:
-          return PSTR(MSG_FILAMENTUNLOAD);
-        default: break;
-      }
-      return PSTR(MSG_FILAMENTCHANGE);
-    }
-
-    void _lcd_temp_menu_filament_op(const AdvancedPauseMode mode, const int8_t extruder) {
-      _change_filament_temp_mode = mode;
-      _change_filament_temp_extruder = extruder;
-      START_MENU();
-      if (LCD_HEIGHT >= 4) STATIC_ITEM_P(change_filament_header(mode), true, true);
-      MENU_BACK(MSG_FILAMENTCHANGE);
-      MENU_ITEM(submenu, MSG_PREHEAT_1, _lcd_change_filament_temp_1_menu);
-      MENU_ITEM(submenu, MSG_PREHEAT_2, _lcd_change_filament_temp_2_menu);
-      END_MENU();
-    }
-    void lcd_temp_menu_e0_filament_change()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_PAUSE_PRINT, 0); }
-    void lcd_temp_menu_e0_filament_load()    { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_LOAD_FILAMENT, 0); }
-    void lcd_temp_menu_e0_filament_unload()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT, 0); }
-    #if E_STEPPERS > 1
-      void lcd_temp_menu_e1_filament_change()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_PAUSE_PRINT, 1); }
-      void lcd_temp_menu_e1_filament_load()    { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_LOAD_FILAMENT, 1); }
-      void lcd_temp_menu_e1_filament_unload()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT, 1); }
-      #if ENABLED(FILAMENT_UNLOAD_ALL_EXTRUDERS)
-        void lcd_unload_filament_all_temp_menu() { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT, -1); }
-      #endif
-      #if E_STEPPERS > 2
-        void lcd_temp_menu_e2_filament_change()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_PAUSE_PRINT, 2); }
-        void lcd_temp_menu_e2_filament_load()    { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_LOAD_FILAMENT, 2); }
-        void lcd_temp_menu_e2_filament_unload()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT, 2); }
-        #if E_STEPPERS > 3
-          void lcd_temp_menu_e3_filament_change()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_PAUSE_PRINT, 3); }
-          void lcd_temp_menu_e3_filament_load()    { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_LOAD_FILAMENT, 3); }
-          void lcd_temp_menu_e3_filament_unload()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT, 3); }
-          #if E_STEPPERS > 4
-            void lcd_temp_menu_e4_filament_change()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_PAUSE_PRINT, 4); }
-            void lcd_temp_menu_e4_filament_load()    { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_LOAD_FILAMENT, 4); }
-            void lcd_temp_menu_e4_filament_unload()  { _lcd_temp_menu_filament_op(ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT, 4); }
-          #endif // E_STEPPERS > 4
-        #endif // E_STEPPERS > 3
-      #endif // E_STEPPERS > 2
-    #endif // E_STEPPERS > 1
-
-    /**
-     *
-     * "Change Filament" submenu
-     *
-     */
-    #if E_STEPPERS > 1 || ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-      void lcd_change_filament_menu() {
-        START_MENU();
-        MENU_BACK(MSG_PREPARE);
-
-        // Change filament
-        #if E_STEPPERS == 1
-          PGM_P msg0 = PSTR(MSG_FILAMENTCHANGE);
-          if (thermalManager.targetTooColdToExtrude(active_extruder))
-            MENU_ITEM_P(submenu, msg0, lcd_temp_menu_e0_filament_change);
-          else
-            MENU_ITEM_P(gcode, msg0, PSTR("M600 B0"));
-        #else
-          PGM_P msg0 = PSTR(MSG_FILAMENTCHANGE " " MSG_E1);
-          PGM_P msg1 = PSTR(MSG_FILAMENTCHANGE " " MSG_E2);
-          if (thermalManager.targetTooColdToExtrude(0))
-            MENU_ITEM_P(submenu, msg0, lcd_temp_menu_e0_filament_change);
-          else
-            MENU_ITEM_P(gcode, msg0, PSTR("M600 B0 T0"));
-          if (thermalManager.targetTooColdToExtrude(1))
-            MENU_ITEM_P(submenu, msg1, lcd_temp_menu_e1_filament_change);
-          else
-            MENU_ITEM_P(gcode, msg1, PSTR("M600 B0 T1"));
-          #if E_STEPPERS > 2
-            PGM_P msg2 = PSTR(MSG_FILAMENTCHANGE " " MSG_E3);
-            if (thermalManager.targetTooColdToExtrude(2))
-              MENU_ITEM_P(submenu, msg2, lcd_temp_menu_e2_filament_change);
-            else
-              MENU_ITEM_P(gcode, msg2, PSTR("M600 B0 T2"));
-            #if E_STEPPERS > 3
-              PGM_P msg3 = PSTR(MSG_FILAMENTCHANGE " " MSG_E4);
-              if (thermalManager.targetTooColdToExtrude(3))
-                MENU_ITEM_P(submenu, msg3, lcd_temp_menu_e3_filament_change);
-              else
-                MENU_ITEM_P(gcode, msg3, PSTR("M600 B0 T3"));
-              #if E_STEPPERS > 4
-                PGM_P msg4 = PSTR(MSG_FILAMENTCHANGE " " MSG_E5);
-                if (thermalManager.targetTooColdToExtrude(4))
-                  MENU_ITEM_P(submenu, msg4, lcd_temp_menu_e4_filament_change);
-                else
-                  MENU_ITEM_P(gcode, msg4, PSTR("M600 B0 T4"));
-              #endif // E_STEPPERS > 4
-            #endif // E_STEPPERS > 3
-          #endif // E_STEPPERS > 2
-        #endif // E_STEPPERS == 1
-
-        #if ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-          if (!planner.movesplanned() && !IS_SD_FILE_OPEN()) {
-            // Load filament
-            #if E_STEPPERS == 1
-              PGM_P msg0 = PSTR(MSG_FILAMENTLOAD);
-              if (thermalManager.targetTooColdToExtrude(active_extruder))
-                MENU_ITEM_P(submenu, msg0, lcd_temp_menu_e0_filament_load);
-              else
-                MENU_ITEM_P(gcode, msg0, PSTR("M701"));
-            #else
-              PGM_P msg0 = PSTR(MSG_FILAMENTLOAD " " MSG_E1);
-              PGM_P msg1 = PSTR(MSG_FILAMENTLOAD " " MSG_E2);
-              if (thermalManager.targetTooColdToExtrude(0))
-                MENU_ITEM_P(submenu, msg0, lcd_temp_menu_e0_filament_load);
-              else
-                MENU_ITEM_P(gcode, msg0, PSTR("M701 T0"));
-              if (thermalManager.targetTooColdToExtrude(1))
-                MENU_ITEM_P(submenu, msg1, lcd_temp_menu_e1_filament_load);
-              else
-                MENU_ITEM_P(gcode, msg1, PSTR("M701 T1"));
-              #if E_STEPPERS > 2
-                PGM_P msg2 = PSTR(MSG_FILAMENTLOAD " " MSG_E3);
-                if (thermalManager.targetTooColdToExtrude(2))
-                  MENU_ITEM_P(submenu, msg2, lcd_temp_menu_e2_filament_load);
-                else
-                  MENU_ITEM_P(gcode, msg2, PSTR("M701 T2"));
-                #if E_STEPPERS > 3
-                  PGM_P msg3 = PSTR(MSG_FILAMENTLOAD " " MSG_E4);
-                  if (thermalManager.targetTooColdToExtrude(3))
-                    MENU_ITEM_P(submenu, msg3, lcd_temp_menu_e3_filament_load);
-                  else
-                    MENU_ITEM_P(gcode, msg3, PSTR("M701 T3"));
-                  #if E_STEPPERS > 4
-                    PGM_P msg4 = PSTR(MSG_FILAMENTLOAD " " MSG_E5);
-                    if (thermalManager.targetTooColdToExtrude(4))
-                      MENU_ITEM_P(submenu, msg4, lcd_temp_menu_e4_filament_load);
-                    else
-                      MENU_ITEM_P(gcode, msg4, PSTR("M701 T4"));
-                  #endif // E_STEPPERS > 4
-                #endif // E_STEPPERS > 3
-              #endif // E_STEPPERS > 2
-            #endif // E_STEPPERS == 1
-
-            // Unload filament
-            #if E_STEPPERS == 1
-              if (thermalManager.targetHotEnoughToExtrude(active_extruder))
-                MENU_ITEM(gcode, MSG_FILAMENTUNLOAD, PSTR("M702"));
-              else
-                MENU_ITEM(submenu, MSG_FILAMENTUNLOAD, lcd_temp_menu_e0_filament_unload);
-            #else
-              #if ENABLED(FILAMENT_UNLOAD_ALL_EXTRUDERS)
-                if (thermalManager.targetHotEnoughToExtrude(0)
-                  #if E_STEPPERS > 1
-                    && thermalManager.targetHotEnoughToExtrude(1)
-                    #if E_STEPPERS > 2
-                      && thermalManager.targetHotEnoughToExtrude(2)
-                      #if E_STEPPERS > 3
-                        && thermalManager.targetHotEnoughToExtrude(3)
-                        #if E_STEPPERS > 4
-                          && thermalManager.targetHotEnoughToExtrude(4)
-                        #endif // E_STEPPERS > 4
-                      #endif // E_STEPPERS > 3
-                    #endif // E_STEPPERS > 2
-                  #endif // E_STEPPERS > 1
-                )
-                  MENU_ITEM(gcode, MSG_FILAMENTUNLOAD_ALL, PSTR("M702"));
-              else
-                MENU_ITEM(submenu, MSG_FILAMENTUNLOAD_ALL, lcd_unload_filament_all_temp_menu);
-              #endif
-              if (thermalManager.targetHotEnoughToExtrude(0))
-                MENU_ITEM(gcode, MSG_FILAMENTUNLOAD " " MSG_E1, PSTR("M702 T0"));
-              else
-                MENU_ITEM(submenu, MSG_FILAMENTUNLOAD " " MSG_E1, lcd_temp_menu_e0_filament_unload);
-              if (thermalManager.targetHotEnoughToExtrude(1))
-                MENU_ITEM(gcode, MSG_FILAMENTUNLOAD " " MSG_E2, PSTR("M702 T1"));
-              else
-                MENU_ITEM(submenu, MSG_FILAMENTUNLOAD " " MSG_E2, lcd_temp_menu_e1_filament_unload);
-              #if E_STEPPERS > 2
-                if (thermalManager.targetHotEnoughToExtrude(2))
-                  MENU_ITEM(gcode, MSG_FILAMENTUNLOAD " " MSG_E3, PSTR("M702 T2"));
-                else
-                  MENU_ITEM(submenu, MSG_FILAMENTUNLOAD " " MSG_E3, lcd_temp_menu_e2_filament_unload);
-                #if E_STEPPERS > 3
-                  if (thermalManager.targetHotEnoughToExtrude(3))
-                    MENU_ITEM(gcode, MSG_FILAMENTUNLOAD " " MSG_E4, PSTR("M702 T3"));
-                  else
-                    MENU_ITEM(submenu, MSG_FILAMENTUNLOAD " " MSG_E4, lcd_temp_menu_e3_filament_unload);
-                  #if E_STEPPERS > 4
-                    if (thermalManager.targetHotEnoughToExtrude(4))
-                      MENU_ITEM(gcode, MSG_FILAMENTUNLOAD " " MSG_E5, PSTR("M702 T4"));
-                    else
-                      MENU_ITEM(submenu, MSG_FILAMENTUNLOAD " " MSG_E5, lcd_temp_menu_e4_filament_unload);
-                  #endif // E_STEPPERS > 4
-                #endif // E_STEPPERS > 3
-              #endif // E_STEPPERS > 2
-            #endif // E_STEPPERS == 1
-          }
-        #endif
-
-        END_MENU();
-      }
-    #endif
-
-    static AdvancedPauseMode advanced_pause_mode = ADVANCED_PAUSE_MODE_PAUSE_PRINT;
-    static uint8_t hotend_status_extruder = 0;
-
-    static const char* advanced_pause_header() {
-      switch (advanced_pause_mode) {
-        case ADVANCED_PAUSE_MODE_LOAD_FILAMENT:
-          return PSTR(MSG_FILAMENT_CHANGE_HEADER_LOAD);
-        case ADVANCED_PAUSE_MODE_UNLOAD_FILAMENT:
-          return PSTR(MSG_FILAMENT_CHANGE_HEADER_UNLOAD);
-        default: break;
-      }
-      return PSTR(MSG_FILAMENT_CHANGE_HEADER_PAUSE);
-    }
-
-    // Portions from STATIC_ITEM...
-    #define HOTEND_STATUS_ITEM() do { \
-      if (_menuLineNr == _thisItemNr) { \
-        if (lcdDrawUpdate) { \
-          lcd_implementation_drawmenu_static(_lcdLineNr, PSTR(MSG_FILAMENT_CHANGE_NOZZLE), false, true); \
-          lcd_implementation_hotend_status(_lcdLineNr, hotend_status_extruder); \
-        } \
-        if (_skipStatic && encoderLine <= _thisItemNr) { \
-          encoderPosition += ENCODER_STEPS_PER_MENU_ITEM; \
-          ++encoderLine; \
-        } \
-        lcdDrawUpdate = LCDVIEW_CALL_REDRAW_NEXT; \
-      } \
-      ++_thisItemNr; \
-    }while(0)
-
-    void lcd_advanced_pause_resume_print() {
-      advanced_pause_menu_response = ADVANCED_PAUSE_RESPONSE_RESUME_PRINT;
-    }
-
-    void lcd_advanced_pause_extrude_more() {
-      advanced_pause_menu_response = ADVANCED_PAUSE_RESPONSE_EXTRUDE_MORE;
-    }
-
-    void lcd_advanced_pause_option_menu() {
-      START_MENU();
-      #if LCD_HEIGHT > 2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_OPTION_HEADER, true, false);
-      #endif
-      MENU_ITEM(function, MSG_FILAMENT_CHANGE_OPTION_RESUME, lcd_advanced_pause_resume_print);
-      MENU_ITEM(function, MSG_FILAMENT_CHANGE_OPTION_PURGE, lcd_advanced_pause_extrude_more);
-      END_MENU();
-    }
-
-    void lcd_advanced_pause_init_message() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_INIT_1);
-      #ifdef MSG_FILAMENT_CHANGE_INIT_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_INIT_2);
-        #define __FC_LINES_A 3
-      #else
-        #define __FC_LINES_A 2
-      #endif
-      #ifdef MSG_FILAMENT_CHANGE_INIT_3
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_INIT_3);
-        #define _FC_LINES_A (__FC_LINES_A + 1)
-      #else
-        #define _FC_LINES_A __FC_LINES_A
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_A + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    void lcd_advanced_pause_unload_message() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_UNLOAD_1);
-      #ifdef MSG_FILAMENT_CHANGE_UNLOAD_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_UNLOAD_2);
-        #define __FC_LINES_B 3
-      #else
-        #define __FC_LINES_B 2
-      #endif
-      #ifdef MSG_FILAMENT_CHANGE_UNLOAD_3
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_UNLOAD_3);
-        #define _FC_LINES_B (__FC_LINES_B + 1)
-      #else
-        #define _FC_LINES_B __FC_LINES_B
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_B + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    void lcd_advanced_pause_wait_for_nozzles_to_heat() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_HEATING_1);
-      #ifdef MSG_FILAMENT_CHANGE_HEATING_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_HEATING_2);
-        #define _FC_LINES_C 3
-      #else
-        #define _FC_LINES_C 2
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_C + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    void lcd_advanced_pause_heat_nozzle() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_HEAT_1);
-      #ifdef MSG_FILAMENT_CHANGE_INSERT_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_HEAT_2);
-        #define _FC_LINES_D 3
-      #else
-        #define _FC_LINES_D 2
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_D + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    void lcd_advanced_pause_insert_message() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_INSERT_1);
-      #ifdef MSG_FILAMENT_CHANGE_INSERT_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_INSERT_2);
-        #define __FC_LINES_E 3
-      #else
-        #define __FC_LINES_E 2
-      #endif
-      #ifdef MSG_FILAMENT_CHANGE_INSERT_3
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_INSERT_3);
-        #define _FC_LINES_E (__FC_LINES_E + 1)
-      #else
-        #define _FC_LINES_E __FC_LINES_E
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_E + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    void lcd_advanced_pause_load_message() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_LOAD_1);
-      #ifdef MSG_FILAMENT_CHANGE_LOAD_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_LOAD_2);
-        #define __FC_LINES_F 3
-      #else
-        #define __FC_LINES_F 2
-      #endif
-      #ifdef MSG_FILAMENT_CHANGE_LOAD_3
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_LOAD_3);
-        #define _FC_LINES_F (__FC_LINES_F + 1)
-      #else
-        #define _FC_LINES_F __FC_LINES_F
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_F + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    void lcd_advanced_pause_purge_message() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_PURGE_1);
-      #ifdef MSG_FILAMENT_CHANGE_PURGE_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_PURGE_2);
-        #define __FC_LINES_G 3
-      #else
-        #define __FC_LINES_G 2
-      #endif
-      #ifdef MSG_FILAMENT_CHANGE_PURGE_3
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_PURGE_3);
-        #define _FC_LINES_G (__FC_LINES_G + 1)
-      #else
-        #define _FC_LINES_G __FC_LINES_G
-      #endif
-      #if LCD_HEIGHT > _FC_LINES_G + 1
-        STATIC_ITEM(" ");
-      #endif
-      HOTEND_STATUS_ITEM();
-      END_SCREEN();
-    }
-
-    #if ENABLED(ADVANCED_PAUSE_CONTINUOUS_PURGE)
-      void lcd_advanced_pause_continuous_purge_menu() {
-        START_SCREEN();
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_PURGE_1);
-        #ifdef MSG_FILAMENT_CHANGE_PURGE_2
-          STATIC_ITEM(MSG_FILAMENT_CHANGE_PURGE_2);
-          #define __FC_LINES_G 3
-        #else
-          #define __FC_LINES_G 2
-        #endif
-        #ifdef MSG_FILAMENT_CHANGE_PURGE_3
-          STATIC_ITEM(MSG_FILAMENT_CHANGE_PURGE_3);
-          #define _FC_LINES_G (__FC_LINES_G + 1)
-        #else
-          #define _FC_LINES_G __FC_LINES_G
-        #endif
-        #if LCD_HEIGHT > _FC_LINES_G + 1
-          STATIC_ITEM(" ");
-        #endif
-        HOTEND_STATUS_ITEM();
-        STATIC_ITEM(MSG_USERWAIT);
-        END_SCREEN();
-      }
-    #endif
-
-    void lcd_advanced_pause_resume_message() {
-      START_SCREEN();
-      STATIC_ITEM_P(advanced_pause_header(), true, true);
-      STATIC_ITEM(MSG_FILAMENT_CHANGE_RESUME_1);
-      #ifdef MSG_FILAMENT_CHANGE_RESUME_2
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_RESUME_2);
-      #endif
-      #ifdef MSG_FILAMENT_CHANGE_RESUME_3
-        STATIC_ITEM(MSG_FILAMENT_CHANGE_RESUME_3);
-      #endif
-      END_SCREEN();
-    }
-
-    FORCE_INLINE screenFunc_t ap_message_screen(const AdvancedPauseMessage message) {
-      switch (message) {
-        case ADVANCED_PAUSE_MESSAGE_INIT: return lcd_advanced_pause_init_message;
-        case ADVANCED_PAUSE_MESSAGE_UNLOAD: return lcd_advanced_pause_unload_message;
-        case ADVANCED_PAUSE_MESSAGE_INSERT: return lcd_advanced_pause_insert_message;
-        case ADVANCED_PAUSE_MESSAGE_LOAD: return lcd_advanced_pause_load_message;
-        case ADVANCED_PAUSE_MESSAGE_PURGE: return lcd_advanced_pause_purge_message;
-        case ADVANCED_PAUSE_MESSAGE_RESUME: return lcd_advanced_pause_resume_message;
-        case ADVANCED_PAUSE_MESSAGE_CLICK_TO_HEAT_NOZZLE: return lcd_advanced_pause_heat_nozzle;
-        case ADVANCED_PAUSE_MESSAGE_WAIT_FOR_NOZZLES_TO_HEAT: return lcd_advanced_pause_wait_for_nozzles_to_heat;
-        case ADVANCED_PAUSE_MESSAGE_OPTION: advanced_pause_menu_response = ADVANCED_PAUSE_RESPONSE_WAIT_FOR;
-                                            return lcd_advanced_pause_option_menu;
-        #if ENABLED(ADVANCED_PAUSE_CONTINUOUS_PURGE)
-          case ADVANCED_PAUSE_MESSAGE_CONTINUOUS_PURGE: return lcd_advanced_pause_continuous_purge_menu;
-        #endif
-        case ADVANCED_PAUSE_MESSAGE_STATUS:
-        default: break;
-      }
-      return NULL;
-    }
-
-    void lcd_advanced_pause_show_message(
-      const AdvancedPauseMessage message,
-      const AdvancedPauseMode mode/*=ADVANCED_PAUSE_MODE_PAUSE_PRINT*/,
-      const uint8_t extruder/*=active_extruder*/
-    ) {
-      advanced_pause_mode = mode;
-      hotend_status_extruder = extruder;
-      const screenFunc_t next_screen = ap_message_screen(message);
-      if (next_screen) {
-        defer_return_to_status = true;
-        lcd_goto_screen(next_screen);
-      }
-      else
-        lcd_return_to_status();
-    }
-
-  #endif // ADVANCED_PAUSE_FEATURE
 
   /**
    *

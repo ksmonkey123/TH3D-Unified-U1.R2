@@ -74,7 +74,7 @@
   #define MSG_PROGRESS_BAR_TEST               _UxGT("Progress Bar Test")
 #endif
 #ifndef MSG_AUTO_HOME
-  #define MSG_AUTO_HOME                       _UxGT("Auto home")
+  #define MSG_AUTO_HOME                       _UxGT("Home All")
 #endif
 #ifndef MSG_AUTO_HOME_X
   #define MSG_AUTO_HOME_X                     _UxGT("Home X")
@@ -83,7 +83,7 @@
   #define MSG_AUTO_HOME_Y                     _UxGT("Home Y")
 #endif
 #ifndef MSG_AUTO_HOME_Z
-  #define MSG_AUTO_HOME_Z                     _UxGT("Home Z")
+  #define MSG_AUTO_HOME_Z                     _UxGT("Zero Z")
 #endif
 #ifndef MSG_TMC_Z_CALIBRATION
   #define MSG_TMC_Z_CALIBRATION               _UxGT("Calibrate Z")
@@ -475,7 +475,7 @@
   #define MSG_FLOW                            _UxGT("Flow")
 #endif
 #ifndef MSG_CONTROL
-  #define MSG_CONTROL                         _UxGT("Control")
+  #define MSG_CONTROL                         _UxGT("Configuration")
 #endif
 #ifndef MSG_MIN
   #define MSG_MIN                             _UxGT(" ") LCD_STR_THERMOMETER _UxGT(" Min")
@@ -613,7 +613,7 @@
   #define MSG_TEMPERATURE                     _UxGT("Temperature")
 #endif
 #ifndef MSG_MOTION
-  #define MSG_MOTION                          _UxGT("Motion")
+  #define MSG_MOTION                          _UxGT("Configuration")
 #endif
 #ifndef MSG_FILAMENT
   #define MSG_FILAMENT                        _UxGT("Filament")
@@ -679,7 +679,7 @@
   #define MSG_POWER_LOSS_RECOVERY             _UxGT("Power-Loss Recovery")
 #endif
 #ifndef MSG_CARD_MENU
-  #define MSG_CARD_MENU                       _UxGT("Print from SD")
+  #define MSG_CARD_MENU                       _UxGT("Run from SD")
 #endif
 #ifndef MSG_NO_CARD
   #define MSG_NO_CARD                         _UxGT("No SD card")
@@ -691,13 +691,13 @@
   #define MSG_USERWAIT                        _UxGT("Click to resume...")
 #endif
 #ifndef MSG_PRINT_PAUSED
-  #define MSG_PRINT_PAUSED                    _UxGT("Print paused")
+  #define MSG_PRINT_PAUSED                    _UxGT("Program paused")
 #endif
 #ifndef MSG_PRINTING
-  #define MSG_PRINTING                        _UxGT("Printing...")
+  #define MSG_PRINTING                        _UxGT("Running...")
 #endif
 #ifndef MSG_PRINT_ABORTED
-  #define MSG_PRINT_ABORTED                   _UxGT("Print aborted")
+  #define MSG_PRINT_ABORTED                   _UxGT("Program aborted")
 #endif
 #ifndef MSG_NO_MOVE
   #define MSG_NO_MOVE                         _UxGT("No move.")
