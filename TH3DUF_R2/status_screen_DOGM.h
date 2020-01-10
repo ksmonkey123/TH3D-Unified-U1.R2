@@ -108,14 +108,12 @@ FORCE_INLINE void _draw_axis_value(const AxisEnum axis, const char *value, const
   if (blink)
     lcd_print(value);
   else {
-    if (!TEST(axis_homed, axis))
+    if (axis != Z_AXIS && !TEST(axis_homed, axis))
       while (const char c = *value++) lcd_print(c <= '.' ? c : '?');
     else {
-      #if DISABLED(HOME_AFTER_DEACTIVATE) && DISABLED(DISABLE_REDUCED_ACCURACY_WARNING)
         if (!TEST(axis_known_position, axis))
           lcd_printPGM(axis == Z_AXIS ? PSTR("      ") : PSTR("    "));
         else
-      #endif
           lcd_print(value);
     }
   }
@@ -425,7 +423,7 @@ static void lcd_implementation_status_screen() {
       u8g.setPrintPos(2 * XYZ_SPACING + X_LABEL_POS, XYZ_BASELINE);
       lcd_printPGM(PSTR(MSG_Z));
       u8g.setPrintPos(2 * XYZ_SPACING + X_VALUE_POS, XYZ_BASELINE);
-      _draw_axis_value(Z_AXIS, zstring, true);
+      _draw_axis_value(Z_AXIS, zstring, blink);
 
       #if DISABLED(XYZ_HOLLOW_FRAME)
         u8g.setColorIndex(1); // black on white

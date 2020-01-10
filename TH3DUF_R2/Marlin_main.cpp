@@ -4617,34 +4617,19 @@ inline void gcode_G28(const bool always_home_all) {
                homeZ = always_home_all || parser.seen('Z'),
                home_all = (!homeX && !homeY && !homeZ) || (homeX && homeY && homeZ);
 
-    set_destination_from_current();
-
-    #if Z_HOME_DIR > 0  // If homing away from BED do Z first
-
-      if (home_all || homeZ) homeaxis(Z_AXIS);
-
-    #endif
-
-    const float z_homing_height = (
-      #if ENABLED(UNKNOWN_Z_NO_RAISE)
-        !TEST(axis_known_position, Z_AXIS) ? 0 :
-      #endif
-          (parser.seenval('R') ? parser.value_linear_units() : Z_HOMING_HEIGHT)
-    );
-
-    if (z_homing_height && (home_all || homeX || homeY)) {
-      // Raise Z before homing any other axes and z is not already high enough (never lower z)
-      destination[Z_AXIS] = z_homing_height;
-      if (destination[Z_AXIS] > current_position[Z_AXIS]) {
-
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (DEBUGGING(LEVELING))
-            SERIAL_ECHOLNPAIR("Raise Z (before homing) to ", destination[Z_AXIS]);
-        #endif
-
-        do_blocking_move_to_z(destination[Z_AXIS]);
-      }
+    if (home_all || homeZ) {
+      current_position[Z_AXIS] = 0;
+      sync_plan_position();
+      SBI(axis_known_position, Z_AXIS);
+      SBI(axis_homed, Z_AXIS);
     }
+
+    if (home_all) {
+      destination[Z_AXIS] = 20;
+      do_blocking_move_to_z(destination[Z_AXIS]);
+    }
+
+    set_destination_from_current();
 
     #if ENABLED(QUICK_HOME)
 
@@ -4699,24 +4684,6 @@ inline void gcode_G28(const bool always_home_all) {
     #if DISABLED(HOME_Y_BEFORE_X)
       if (home_all || homeY) homeaxis(Y_AXIS);
     #endif
-
-    // Home Z last if homing towards the bed
-    #if Z_HOME_DIR < 0
-      if (home_all || homeZ) {
-        #if ENABLED(Z_SAFE_HOMING)
-          home_z_safely();
-        #else
-          set_axis_is_at_home(Z_AXIS);
-          current_position[Z_AXIS] = 0;
-          //homeaxis(Z_AXIS);
-        #endif
-
-        #if HOMING_Z_WITH_PROBE && defined(Z_AFTER_PROBING)
-          move_z_after_probing();
-        #endif
-
-      } // home_all || homeZ
-    #endif // Z_HOME_DIR < 0
 
     SYNC_PLAN_POSITION_KINEMATIC();
 
