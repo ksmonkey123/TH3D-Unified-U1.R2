@@ -283,6 +283,8 @@
 #define MSG_Y "Y"
 #define MSG_Z "Z"
 #define MSG_E "E"
+#define MSG_MX "Mx"
+#define MSG_MY "My"
 #if IS_KINEMATIC
   #define MSG_A "A"
   #define MSG_B "B"

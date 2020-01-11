@@ -76,8 +76,26 @@
 #ifndef MSG_AUTO_HOME
   #define MSG_AUTO_HOME                       _UxGT("Home All")
 #endif
+#ifndef MSG_GOTO_MARK
+  #define MSG_GOTO_MARK                       _UxGT("Move to Mark")
+#endif
+#ifndef MSG_CLEAR_MARK
+  #define MSG_CLEAR_MARK                       _UxGT("Clear Mark")
+#endif
+#ifndef MSG_TOOLS
+  #define MSG_TOOLS      _UxGT("Tools")
+#endif
+#ifndef MSG_PCB_DRILL
+  #define MSG_PCB_DRILL _UxGT("Drill Screw Holes")
+#endif
+#ifndef MSG_SET_MARK
+  #define MSG_SET_MARK                       _UxGT("Mark Position")
+#endif
 #ifndef MSG_AUTO_HOME_X
   #define MSG_AUTO_HOME_X                     _UxGT("Home X")
+#endif
+#ifndef MSG_AUTO_HOME_XY
+  #define MSG_AUTO_HOME_XY                    _UxGT("Home X/Y")
 #endif
 #ifndef MSG_AUTO_HOME_Y
   #define MSG_AUTO_HOME_Y                     _UxGT("Home Y")

@@ -174,6 +174,7 @@ uint16_t max_display_update_time = 0;
   void lcd_main_menu();
   void lcd_tune_menu();
   void lcd_prepare_menu();
+  void lcd_tools_menu();
   void lcd_move_menu();
   void lcd_control_menu();
   void lcd_control_motion_velocity_menu();
@@ -1129,8 +1130,10 @@ void lcd_quick_feedback(const bool clear_buttons) {
         MENU_ITEM_EDIT_CALLBACK(bool, MSG_CASE_LIGHT, (bool*)&case_light_on, update_case_light);
     #endif
 
-    if (!(planner.movesplanned() || IS_SD_PRINTING()))
+    if (!(planner.movesplanned() || IS_SD_PRINTING())) {
       MENU_ITEM(submenu, MSG_PREPARE, lcd_prepare_menu);
+      MENU_ITEM(submenu, MSG_TOOLS, lcd_tools_menu);
+    }
 
     #if ENABLED(LED_CONTROL_MENU)
       MENU_ITEM(submenu, MSG_LED_CONTROL, lcd_led_menu);
@@ -2585,6 +2588,15 @@ void lcd_quick_feedback(const bool clear_buttons) {
    *
    */
 
+  void lcd_tools_menu() {
+    START_MENU();
+    MENU_BACK(MSG_MAIN);
+
+    MENU_ITEM(gcode, MSG_PCB_DRILL, PSTR("G28\nG0 X100 Y100 F10000\nG0 Z5 F600\nG4 S2\nG0 Z-2 F60\nG0 Z5 F600\nG4 S2\nG0 Z-2 F60\nG0 Z5 F600\nG4 S2\nG0 Z-2 F60\nG0 Z5 F600\nG4 S2\nG0 Z-2 F60\nG0 Z30 F600\nG0 X0 F10000"));
+  
+    END_MENU();
+  }
+
   void lcd_prepare_menu() {
     START_MENU();
 
@@ -2606,6 +2618,7 @@ void lcd_quick_feedback(const bool clear_buttons) {
     //
     MENU_ITEM(gcode, MSG_AUTO_HOME, PSTR("G28"));
     #if ENABLED(INDIVIDUAL_AXIS_HOMING_MENU)
+      MENU_ITEM(gcode, MSG_AUTO_HOME_XY, PSTR("G28 X Y"));
       MENU_ITEM(gcode, MSG_AUTO_HOME_X, PSTR("G28 X"));
       MENU_ITEM(gcode, MSG_AUTO_HOME_Y, PSTR("G28 Y"));
       MENU_ITEM(gcode, MSG_AUTO_HOME_Z, PSTR("G28 Z"));
@@ -3127,6 +3140,12 @@ void lcd_quick_feedback(const bool clear_buttons) {
     }
     else
       MENU_ITEM(gcode, MSG_AUTO_HOME, PSTR("G28"));
+
+    // mark stuff
+    MENU_ITEM(gcode, MSG_GOTO_MARK, PSTR("G901"));
+    MENU_ITEM(gcode, MSG_SET_MARK, PSTR("G900"));
+    MENU_ITEM(gcode, MSG_CLEAR_MARK, PSTR("G900 X0 Y0"));
+
     END_MENU();
   }
 

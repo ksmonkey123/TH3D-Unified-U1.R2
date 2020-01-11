@@ -403,6 +403,8 @@ float current_position[XYZE] = { 0 };
  */
 float destination[XYZE] = { 0 };
 
+float marked_position[2] = { 0 };
+
 /**
  * axis_homed
  *   Flags that each linear axis was homed.
@@ -4624,9 +4626,13 @@ inline void gcode_G28(const bool always_home_all) {
       SBI(axis_homed, Z_AXIS);
     }
 
+    lcd_setstatus("Homing...");
+
     if (home_all) {
       destination[Z_AXIS] = 20;
       do_blocking_move_to_z(destination[Z_AXIS]);
+      current_position[Z_AXIS] = 20;
+      sync_plan_position();
     }
 
     set_destination_from_current();
@@ -4726,12 +4732,60 @@ inline void gcode_G28(const bool always_home_all) {
       SERIAL_ECHOLNPGM(MSG_Z_MOVE_COMP);
   #endif
 
+  lcd_reset_status();
+
   #if ENABLED(DEBUG_LEVELING_FEATURE)
     if (DEBUGGING(LEVELING)) SERIAL_ECHOLNPGM("<<< G28");
   #endif
 } // G28
 
 void home_all_axes() { gcode_G28(true); }
+
+inline void zero_all_axes() {
+  current_position[X_AXIS] = 0;
+  current_position[Y_AXIS] = 0;
+  current_position[Z_AXIS] = 0;
+  sync_plan_position();
+}
+
+inline void absolute_mark_axis(AxisEnum axis) {
+  current_position[axis] += marked_position[axis];
+  marked_position[axis] = parser.value_axis_units(axis);
+  current_position[axis] -= marked_position[axis];
+  sync_plan_position();
+}
+
+// mark position and zero (or apply new mark from G_CODE)
+inline void gcode_G900() {
+  planner.synchronize();
+  
+  bool any_written = false;
+
+  if (parser.seen('X')) {
+    any_written = true;
+    absolute_mark_axis(X_AXIS);
+  }
+  if (parser.seen('Y')) {
+    any_written = true;
+    absolute_mark_axis(Y_AXIS);
+  }
+  if (!any_written) {
+    marked_position[X_AXIS] += current_position[X_AXIS];
+    marked_position[Y_AXIS] += current_position[Y_AXIS];
+    zero_all_axes();
+  }
+}
+
+// go to marked position
+inline void gcode_G901() {
+  planner.synchronize();
+  home_all_axes();
+  lcd_setstatus("Moving to Mark...");
+  do_blocking_move_to_xy(marked_position[X_AXIS], marked_position[Y_AXIS], MIN(homing_feedrate(X_AXIS), homing_feedrate(Y_AXIS)));
+  do_blocking_move_to_z(0);
+  zero_all_axes();
+  lcd_reset_status();
+}
 
 #if ENABLED(MESH_BED_LEVELING) || ENABLED(PROBE_MANUALLY)
 
@@ -13058,6 +13112,9 @@ void process_parsed_command() {
         case 95: gcode_G95(); break;                                // G95: Set torque mode
         case 96: gcode_G96(); break;                                // G96: Mark encoder reference point
       #endif
+
+      case 900: gcode_G900(); break; // custom code: mark current X/Y-position (and reset axes)
+      case 901: gcode_G901(); break; // custom code: home and go to marked position (and reset axes)
 
       #if ENABLED(DEBUG_GCODE_PARSER)
         case 800: parser.debug(); break;                          // G800: GCode Parser Test for G

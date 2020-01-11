@@ -362,6 +362,7 @@ static void lcd_implementation_status_screen() {
   //
 
   #define XYZ_BASELINE (1 + INFO_FONT_HEIGHT)
+  #define MARK_BASELINE (XYZ_BASELINE + 10)
 
   #define X_LABEL_POS  3
   #define X_VALUE_POS 11
@@ -375,7 +376,7 @@ static void lcd_implementation_status_screen() {
     #define XYZ_FRAME_HEIGHT INFO_FONT_HEIGHT + 1
   #endif
 
-  static char xstring[5], ystring[5], zstring[7];
+  static char xstring[5], ystring[5], zstring[7], xmstring[5], ymstring[5];
   #if ENABLED(FILAMENT_LCD_DISPLAY)
     static char wstring[5], mstring[4];
   #endif
@@ -385,6 +386,9 @@ static void lcd_implementation_status_screen() {
     strcpy(xstring, ftostr4sign(LOGICAL_X_POSITION(current_position[X_AXIS])));
     strcpy(ystring, ftostr4sign(LOGICAL_Y_POSITION(current_position[Y_AXIS])));
     strcpy(zstring, ftostr52sp(LOGICAL_Z_POSITION(current_position[Z_AXIS])));
+    strcpy(xmstring, ftostr4sign(LOGICAL_X_POSITION(marked_position[X_AXIS])));
+    strcpy(ymstring, ftostr4sign(LOGICAL_Y_POSITION(marked_position[Y_AXIS])));
+
     #if ENABLED(FILAMENT_LCD_DISPLAY)
       strcpy(wstring, ftostr12ns(filament_width_meas));
       strcpy(mstring, itostr3(100.0 * (
@@ -429,6 +433,17 @@ static void lcd_implementation_status_screen() {
         u8g.setColorIndex(1); // black on white
       #endif
     }
+  }
+
+  if (PAGE_CONTAINS(MARK_BASELINE - (INFO_FONT_HEIGHT - 1), MARK_BASELINE)) {
+    u8g.setPrintPos(0 * XYZ_SPACING + X_LABEL_POS, MARK_BASELINE);
+    lcd_printPGM(PSTR(MSG_MX));
+    u8g.setPrintPos(0 * XYZ_SPACING + X_VALUE_POS, MARK_BASELINE);
+    lcd_print(xmstring);
+    u8g.setPrintPos(1 * XYZ_SPACING + X_LABEL_POS, MARK_BASELINE);
+    lcd_printPGM(PSTR(MSG_MY));
+    u8g.setPrintPos(1 * XYZ_SPACING + X_VALUE_POS, MARK_BASELINE);
+    lcd_print(ymstring);
   }
 
   //

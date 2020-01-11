@@ -282,7 +282,7 @@ extern volatile bool wait_for_heatup;
   extern bool suspend_auto_report;
 #endif
 
-extern float current_position[XYZE], destination[XYZE];
+extern float current_position[XYZE], destination[XYZE], marked_position[2];
 
 /**
  * Workspace offsets
