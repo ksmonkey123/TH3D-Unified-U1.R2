@@ -7200,49 +7200,10 @@ void report_xyz_from_stepper_position() {
   inline void gcode_M3_M4(bool is_M3) {
 
     planner.synchronize();   // wait until previous movement commands (G0/G0/G2/G3) have completed before playing with the spindle
-    #if SPINDLE_DIR_CHANGE
-      const bool rotation_dir = (is_M3 && !SPINDLE_INVERT_DIR || !is_M3 && SPINDLE_INVERT_DIR) ? HIGH : LOW;
-      if (SPINDLE_STOP_ON_DIR_CHANGE \
-         && READ(SPINDLE_LASER_ENABLE_PIN) == SPINDLE_LASER_ENABLE_INVERT \
-         && READ(SPINDLE_DIR_PIN) != rotation_dir
-      ) {
-        WRITE(SPINDLE_LASER_ENABLE_PIN, !SPINDLE_LASER_ENABLE_INVERT);  // turn spindle off
-        delay_for_power_down();
-      }
-      WRITE(SPINDLE_DIR_PIN, rotation_dir);
-    #endif
-
-    /**
-     * Our final value for ocr_val is an unsigned 8 bit value between 0 and 255 which usually means uint8_t.
-     * Went to uint16_t because some of the uint8_t calculations would sometimes give 1000 0000 rather than 1111 1111.
-     * Then needed to AND the uint16_t result with 0x00FF to make sure we only wrote the byte of interest.
-     */
-    #if ENABLED(SPINDLE_LASER_PWM)
-      if (parser.seen('O')) ocr_val_mode();
-      else {
-        const float spindle_laser_power = parser.floatval('S');
-        if (spindle_laser_power == 0) {
-          WRITE(SPINDLE_LASER_ENABLE_PIN, !SPINDLE_LASER_ENABLE_INVERT);                                    // turn spindle off (active low)
-          analogWrite(SPINDLE_LASER_PWM_PIN, SPINDLE_LASER_PWM_INVERT ? 255 : 0);                           // only write low byte
-          delay_for_power_down();
-        }
-        else {
-          int16_t ocr_val = (spindle_laser_power - (SPEED_POWER_INTERCEPT)) * (1.0f / (SPEED_POWER_SLOPE)); // convert RPM to PWM duty cycle
-          NOMORE(ocr_val, 255);                                                                             // limit to max the Atmel PWM will support
-          if (spindle_laser_power <= SPEED_POWER_MIN)
-            ocr_val = (SPEED_POWER_MIN - (SPEED_POWER_INTERCEPT)) * (1.0f / (SPEED_POWER_SLOPE));           // minimum setting
-          if (spindle_laser_power >= SPEED_POWER_MAX)
-            ocr_val = (SPEED_POWER_MAX - (SPEED_POWER_INTERCEPT)) * (1.0f / (SPEED_POWER_SLOPE));           // limit to max RPM
-          if (SPINDLE_LASER_PWM_INVERT) ocr_val = 255 - ocr_val;
-          WRITE(SPINDLE_LASER_ENABLE_PIN, SPINDLE_LASER_ENABLE_INVERT);                                     // turn spindle on (active low)
-          analogWrite(SPINDLE_LASER_PWM_PIN, ocr_val & 0xFF);                                               // only write low byte
-          delay_for_power_up();
-        }
-      }
-    #else
-      WRITE(SPINDLE_LASER_ENABLE_PIN, SPINDLE_LASER_ENABLE_INVERT); // turn spindle on (active low) if spindle speed option not enabled
-      delay_for_power_up();
-    #endif
+    
+    gcode_M106();
+    
+    
   }
 
  /**
@@ -13219,10 +13180,10 @@ void process_parsed_command() {
         case 190: gcode_M190(); break;                            // M190: Set Bed Temperature. Wait for target.
       #endif
 
-      #if FAN_COUNT > 0
+      /*#if FAN_COUNT > 0
         case 106: gcode_M106(); break;                            // M106: Set Fan Speed
         case 107: gcode_M107(); break;                            // M107: Fan Off
-      #endif
+      #endif*/
 
       #if ENABLED(PARK_HEAD_ON_PAUSE)
         case 125: gcode_M125(); break;                            // M125: Park (for Filament Change)

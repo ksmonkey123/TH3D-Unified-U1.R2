@@ -444,6 +444,8 @@ static void lcd_implementation_status_screen() {
     lcd_printPGM(PSTR(MSG_MY));
     u8g.setPrintPos(1 * XYZ_SPACING + X_VALUE_POS, MARK_BASELINE);
     lcd_print(ymstring);
+    u8g.setPrintPos(2 * XYZ_SPACING + X_LABEL_POS, MARK_BASELINE);
+    lcd_print((fanSpeeds[0] > 0) ? "Tool: ON " : "Tool: OFF");
   }
 
   //
