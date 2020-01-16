@@ -7123,103 +7123,9 @@ void report_xyz_from_stepper_position() {
 
 #endif // HAS_RESUME_CONTINUE
 
-#if ENABLED(SPINDLE_LASER_ENABLE)
-  /**
-   * M3: Spindle Clockwise
-   * M4: Spindle Counter-clockwise
-   *
-   *  S0 turns off spindle.
-   *
-   *  If no speed PWM output is defined then M3/M4 just turns it on.
-   *
-   *  At least 12.8KHz (50Hz * 256) is needed for spindle PWM.
-   *  Hardware PWM is required. ISRs are too slow.
-   *
-   * NOTE: WGM for timers 3, 4, and 5 must be either Mode 1 or Mode 5.
-   *       No other settings give a PWM signal that goes from 0 to 5 volts.
-   *
-   *       The system automatically sets WGM to Mode 1, so no special
-   *       initialization is needed.
-   *
-   *       WGM bits for timer 2 are automatically set by the system to
-   *       Mode 1. This produces an acceptable 0 to 5 volt signal.
-   *       No special initialization is needed.
-   *
-   * NOTE: A minimum PWM frequency of 50 Hz is needed. All prescaler
-   *       factors for timers 2, 3, 4, and 5 are acceptable.
-   *
-   *  SPINDLE_LASER_ENABLE_PIN needs an external pullup or it may power on
-   *  the spindle/laser during power-up or when connecting to the host
-   *  (usually goes through a reset which sets all I/O pins to tri-state)
-   *
-   *  PWM duty cycle goes from 0 (off) to 255 (always on).
-   */
-
-  // Wait for spindle to come up to speed
-  inline void delay_for_power_up() { dwell(SPINDLE_LASER_POWERUP_DELAY); }
-
-  // Wait for spindle to stop turning
-  inline void delay_for_power_down() { dwell(SPINDLE_LASER_POWERDOWN_DELAY); }
-
-  /**
-   * ocr_val_mode() is used for debugging and to get the points needed to compute the RPM vs ocr_val line
-   *
-   * it accepts inputs of 0-255
-   */
-
-  inline void ocr_val_mode() {
-    uint8_t spindle_laser_power = parser.value_byte();
-    WRITE(SPINDLE_LASER_ENABLE_PIN, SPINDLE_LASER_ENABLE_INVERT); // turn spindle on (active low)
-    if (SPINDLE_LASER_PWM_INVERT) spindle_laser_power = 255 - spindle_laser_power;
-    analogWrite(SPINDLE_LASER_PWM_PIN, spindle_laser_power);
-  }
-
   inline void gcode_M3_M4(bool is_M3) {
-
-    planner.synchronize();   // wait until previous movement commands (G0/G0/G2/G3) have completed before playing with the spindle
-    #if SPINDLE_DIR_CHANGE
-      const bool rotation_dir = (is_M3 && !SPINDLE_INVERT_DIR || !is_M3 && SPINDLE_INVERT_DIR) ? HIGH : LOW;
-      if (SPINDLE_STOP_ON_DIR_CHANGE \
-         && READ(SPINDLE_LASER_ENABLE_PIN) == SPINDLE_LASER_ENABLE_INVERT \
-         && READ(SPINDLE_DIR_PIN) != rotation_dir
-      ) {
-        WRITE(SPINDLE_LASER_ENABLE_PIN, !SPINDLE_LASER_ENABLE_INVERT);  // turn spindle off
-        delay_for_power_down();
-      }
-      WRITE(SPINDLE_DIR_PIN, rotation_dir);
-    #endif
-
-    /**
-     * Our final value for ocr_val is an unsigned 8 bit value between 0 and 255 which usually means uint8_t.
-     * Went to uint16_t because some of the uint8_t calculations would sometimes give 1000 0000 rather than 1111 1111.
-     * Then needed to AND the uint16_t result with 0x00FF to make sure we only wrote the byte of interest.
-     */
-    #if ENABLED(SPINDLE_LASER_PWM)
-      if (parser.seen('O')) ocr_val_mode();
-      else {
-        const float spindle_laser_power = parser.floatval('S');
-        if (spindle_laser_power == 0) {
-          WRITE(SPINDLE_LASER_ENABLE_PIN, !SPINDLE_LASER_ENABLE_INVERT);                                    // turn spindle off (active low)
-          analogWrite(SPINDLE_LASER_PWM_PIN, SPINDLE_LASER_PWM_INVERT ? 255 : 0);                           // only write low byte
-          delay_for_power_down();
-        }
-        else {
-          int16_t ocr_val = (spindle_laser_power - (SPEED_POWER_INTERCEPT)) * (1.0f / (SPEED_POWER_SLOPE)); // convert RPM to PWM duty cycle
-          NOMORE(ocr_val, 255);                                                                             // limit to max the Atmel PWM will support
-          if (spindle_laser_power <= SPEED_POWER_MIN)
-            ocr_val = (SPEED_POWER_MIN - (SPEED_POWER_INTERCEPT)) * (1.0f / (SPEED_POWER_SLOPE));           // minimum setting
-          if (spindle_laser_power >= SPEED_POWER_MAX)
-            ocr_val = (SPEED_POWER_MAX - (SPEED_POWER_INTERCEPT)) * (1.0f / (SPEED_POWER_SLOPE));           // limit to max RPM
-          if (SPINDLE_LASER_PWM_INVERT) ocr_val = 255 - ocr_val;
-          WRITE(SPINDLE_LASER_ENABLE_PIN, SPINDLE_LASER_ENABLE_INVERT);                                     // turn spindle on (active low)
-          analogWrite(SPINDLE_LASER_PWM_PIN, ocr_val & 0xFF);                                               // only write low byte
-          delay_for_power_up();
-        }
-      }
-    #else
-      WRITE(SPINDLE_LASER_ENABLE_PIN, SPINDLE_LASER_ENABLE_INVERT); // turn spindle on (active low) if spindle speed option not enabled
-      delay_for_power_up();
-    #endif
+    planner.synchronize();
+    fanSpeeds[0] = 255;
   }
 
  /**
@@ -7227,14 +7133,8 @@ void report_xyz_from_stepper_position() {
   */
   inline void gcode_M5() {
     planner.synchronize();
-    WRITE(SPINDLE_LASER_ENABLE_PIN, !SPINDLE_LASER_ENABLE_INVERT);
-    #if ENABLED(SPINDLE_LASER_PWM)
-      analogWrite(SPINDLE_LASER_PWM_PIN, SPINDLE_LASER_PWM_INVERT ? 255 : 0);
-    #endif
-    delay_for_power_down();
+    fanSpeeds[0] = 0;
   }
-
-#endif // SPINDLE_LASER_ENABLE
 
 /**
  * M17: Enable power on all stepper motors
@@ -8642,57 +8542,6 @@ inline void gcode_M105() {
   }
 
 #endif // AUTO_REPORT_TEMPERATURES
-
-#if FAN_COUNT > 0
-
-  /**
-   * M106: Set Fan Speed
-   *
-   *  S<int>   Speed between 0-255
-   *  P<index> Fan index, if more than one fan
-   *
-   * With EXTRA_FAN_SPEED enabled:
-   *
-   *  T<int>   Restore/Use/Set Temporary Speed:
-   *           1     = Restore previous speed after T2
-   *           2     = Use temporary speed set with T3-255
-   *           3-255 = Set the speed for use with T2
-   */
-  inline void gcode_M106() {
-    const uint8_t p = parser.byteval('P');
-    if (p < FAN_COUNT) {
-      #if ENABLED(EXTRA_FAN_SPEED)
-        const int16_t t = parser.intval('T');
-        if (t > 0) {
-          switch (t) {
-            case 1:
-              fanSpeeds[p] = old_fanSpeeds[p];
-              break;
-            case 2:
-              old_fanSpeeds[p] = fanSpeeds[p];
-              fanSpeeds[p] = new_fanSpeeds[p];
-              break;
-            default:
-              new_fanSpeeds[p] = MIN(t, 255);
-              break;
-          }
-          return;
-        }
-      #endif // EXTRA_FAN_SPEED
-      const uint16_t s = parser.ushortval('S', 255);
-      fanSpeeds[p] = MIN(s, 255U);
-    }
-  }
-
-  /**
-   * M107: Fan Off
-   */
-  inline void gcode_M107() {
-    const uint16_t p = parser.ushortval('P');
-    if (p < FAN_COUNT) fanSpeeds[p] = 0;
-  }
-
-#endif // FAN_COUNT > 0
 
 #if DISABLED(EMERGENCY_PARSER)
 
@@ -10556,39 +10405,6 @@ inline void gcode_M226() {
   }
 
 #endif // PREVENT_COLD_EXTRUSION
-
-/**
- * M303: PID relay autotune
- *
- *       S<temperature> sets the target temperature. (default 150C / 70C)
- *       E<extruder> (-1 for the bed) (default 0)
- *       C<cycles>
- *       U<bool> with a non-zero value will apply the result to current settings
- */
-inline void gcode_M303() {
-  #if HAS_PID_HEATING
-    const int e = parser.intval('E'), c = parser.intval('C', 5);
-    const bool u = parser.boolval('U');
-
-    int16_t temp = parser.celsiusval('S', e < 0 ? 70 : 150);
-
-    if (WITHIN(e, 0, HOTENDS - 1))
-      target_extruder = e;
-
-    #if DISABLED(BUSY_WHILE_HEATING)
-      KEEPALIVE_STATE(NOT_BUSY);
-    #endif
-
-    thermalManager.pid_autotune(temp, e, c, u);
-
-    #if DISABLED(BUSY_WHILE_HEATING)
-      KEEPALIVE_STATE(IN_HANDLER);
-    #endif
-  #else
-    SERIAL_ERROR_START();
-    SERIAL_ERRORLNPGM(MSG_ERR_M303_DISABLED);
-  #endif
-}
 
 #if ENABLED(MORGAN_SCARA)
 
@@ -13009,43 +12825,7 @@ void process_parsed_command() {
                         #endif
                       ); break;
 
-      #if ENABLED(ARC_SUPPORT) && DISABLED(SCARA)
-        case 2: case 3: gcode_G2_G3(parser.codenum == 2); break;  // G2: CW ARC, G3: CCW ARC
-      #endif
-
       case 4: gcode_G4(); break;                                  // G4: Dwell
-
-      #if ENABLED(BEZIER_CURVE_SUPPORT)
-        case 5: gcode_G5(); break;                                // G5: Cubic B_spline
-      #endif
-
-      #if ENABLED(UNREGISTERED_MOVE_SUPPORT)
-        case 6: gcode_G6(); break;                                // G6: Direct stepper move
-      #endif
-
-      #if ENABLED(FWRETRACT)
-        case 10: gcode_G10(); break;                              // G10: Retract
-        case 11: gcode_G11(); break;                              // G11: Prime
-      #endif
-
-      #if ENABLED(NOZZLE_CLEAN_FEATURE)
-        case 12: gcode_G12(); break;                              // G12: Clean Nozzle
-      #endif
-
-      #if ENABLED(CNC_WORKSPACE_PLANES)
-        case 17: gcode_G17(); break;                              // G17: Select Plane XY
-        case 18: gcode_G18(); break;                              // G18: Select Plane ZX
-        case 19: gcode_G19(); break;                              // G19: Select Plane YZ
-      #endif
-
-      #if ENABLED(INCH_MODE_SUPPORT)
-        case 20: gcode_G20(); break;                              // G20: Inch Units
-        case 21: gcode_G21(); break;                              // G21: Millimeter Units
-      #endif
-
-      #if ENABLED(G26_MESH_VALIDATION)
-        case 26: gcode_G26(); break;                              // G26: Mesh Validation Pattern
-      #endif
 
       #if ENABLED(NOZZLE_PARK_FEATURE)
         case 27: gcode_G27(); break;                              // G27: Park Nozzle
@@ -13059,15 +12839,6 @@ void process_parsed_command() {
 
       #if HAS_BED_PROBE
         case 30: gcode_G30(); break;                              // G30: Single Z probe
-      #endif
-
-      #if ENABLED(Z_PROBE_SLED)
-        case 31: gcode_G31(); break;                              // G31: Dock sled
-        case 32: gcode_G32(); break;                              // G32: Undock sled
-      #endif
-
-      #if ENABLED(DELTA_AUTO_CALIBRATION)
-        case 33: gcode_G33(); break;                              // G33: Delta Auto-Calibration
       #endif
 
       #if ENABLED(G38_PROBE_TARGET)
@@ -13090,10 +12861,6 @@ void process_parsed_command() {
         case 96: gcode_G96(); break;                                // G96: Mark encoder reference point
       #endif
 
-      #if ENABLED(DEBUG_GCODE_PARSER)
-        case 800: parser.debug(); break;                          // G800: GCode Parser Test for G
-      #endif
-
       default: parser.unknown_command_error();
     }
     break;
@@ -13103,11 +12870,9 @@ void process_parsed_command() {
         case 0: case 1: gcode_M0_M1(); break;                     // M0: Unconditional stop, M1: Conditional stop
       #endif
 
-      #if ENABLED(SPINDLE_LASER_ENABLE)
         case 3: gcode_M3_M4(true); break;                         // M3: Laser/CW-Spindle Power
         case 4: gcode_M3_M4(false); break;                        // M4: Laser/CCW-Spindle Power
         case 5: gcode_M5(); break;                                // M5: Laser/Spindle OFF
-      #endif
 
       case 17: gcode_M17(); break;                                // M17: Enable all steppers
 
@@ -13135,16 +12900,8 @@ void process_parsed_command() {
 
       case 31: gcode_M31(); break;                                // M31: Report print job elapsed time
 
-      #if ENABLED(PINS_DEBUGGING)
-		case 42: gcode_M42(); break;                              // M42: Change pin state
-        case 43: gcode_M43(); break;                              // M43: Read/monitor pin and endstop states
-      #endif
-
       #if ENABLED(Z_MIN_PROBE_REPEATABILITY_TEST)
         case 48: gcode_M48(); break;                              // M48: Z probe repeatability test
-      #endif
-      #if ENABLED(G26_MESH_VALIDATION)
-        case 49: gcode_M49(); break;                              // M49: Toggle the G26 Debug Flag
       #endif
 
       // @advi3++: Enable M73
@@ -13162,7 +12919,6 @@ void process_parsed_command() {
         case 100: gcode_M100(); break;                            // M100: Free Memory Report
       #endif
 
-      case 104: gcode_M104(); break;                              // M104: Set Hotend Temperature
       case 110: gcode_M110(); break;                              // M110: Set Current Line Number
 	  #if DISABLED(SLIM_1284P)
         case 111: gcode_M111(); break;                              // M111: Set Debug Flags
@@ -13180,37 +12936,8 @@ void process_parsed_command() {
         case 113: gcode_M113(); break;                            // M113: Set Host Keepalive Interval
       #endif
 
-      case 105: gcode_M105(); KEEPALIVE_STATE(NOT_BUSY); return;  // M105: Report Temperatures (and say "ok")
-
-      #if ENABLED(AUTO_REPORT_TEMPERATURES) && DISABLED(SLIM_1284P)
-        case 155: gcode_M155(); break;                            // M155: Set Temperature Auto-report Interval
-      #endif
-
-      case 109: gcode_M109(); break;                              // M109: Set Hotend Temperature. Wait for target.
-
-      #if HAS_HEATED_BED
-        case 140: gcode_M140(); break;                            // M140: Set Bed Temperature
-        case 190: gcode_M190(); break;                            // M190: Set Bed Temperature. Wait for target.
-      #endif
-
-      #if FAN_COUNT > 0
-        case 106: gcode_M106(); break;                            // M106: Set Fan Speed
-        case 107: gcode_M107(); break;                            // M107: Fan Off
-      #endif
-
       #if ENABLED(PARK_HEAD_ON_PAUSE)
         case 125: gcode_M125(); break;                            // M125: Park (for Filament Change)
-      #endif
-
-      #if ENABLED(BARICUDA)
-        #if HAS_HEATER_1
-          case 126: gcode_M126(); break;                          // M126: Valve 1 Open
-          case 127: gcode_M127(); break;                          // M127: Valve 1 Closed
-        #endif
-        #if HAS_HEATER_2
-          case 128: gcode_M128(); break;                          // M128: Valve 2 Open
-          case 129: gcode_M129(); break;                          // M129: Valve 2 Closed
-        #endif
       #endif
 
       #if HAS_POWER_SWITCH
@@ -13238,30 +12965,8 @@ void process_parsed_command() {
         case 121: gcode_M121(); break;                              // M121: Disable Endstops
 	  #endif
 
-      #if ENABLED(ULTIPANEL) && DISABLED(SLIM_1284P)
-        case 145: gcode_M145(); break;                            // M145: Set material heatup parameters
-      #endif
-
-      #if ENABLED(TEMPERATURE_UNITS_SUPPORT)
-        case 149: gcode_M149(); break;                            // M149: Set Temperature Units, C F K
-      #endif
-
       #if HAS_COLOR_LEDS
         case 150: gcode_M150(); break;                            // M150: Set Status LED Color
-      #endif
-
-      #if ENABLED(MIXING_EXTRUDER)
-        case 163: gcode_M163(); break;                            // M163: Set Mixing Component
-        #if MIXING_VIRTUAL_TOOLS > 1
-          case 164: gcode_M164(); break;                          // M164: Save Current Mix
-        #endif
-        #if ENABLED(DIRECT_MIXING_IN_G1)
-          case 165: gcode_M165(); break;                          // M165: Set Multiple Mixing Components
-        #endif
-      #endif
-
-      #if DISABLED(NO_VOLUMETRICS)
-        case 200: gcode_M200(); break;                            // M200: Set Filament Diameter, Volumetric Extrusion
       #endif
 
       case 201: gcode_M201(); break;                              // M201: Set Max Printing Acceleration (units/sec^2)
@@ -13277,14 +12982,6 @@ void process_parsed_command() {
         case 428: gcode_M428(); break;                            // M428: Set Home Offsets based on current position
       #endif
 
-      #if ENABLED(FWRETRACT)
-        case 207: gcode_M207(); break;                            // M207: Set Retract Length, Feedrate, Z lift
-        case 208: gcode_M208(); break;                            // M208: Set Additional Prime Length and Feedrate
-        case 209:
-          if (MIN_AUTORETRACT <= MAX_AUTORETRACT) gcode_M209();   // M209: Turn Auto-Retract on/off
-          break;
-      #endif
-
       #if DISABLED(SLIM_1284P)
         case 211: gcode_M211(); break;                              // M211: Enable/Disable/Report Software Endstops
       #endif
@@ -13294,7 +12991,6 @@ void process_parsed_command() {
       #endif
 
       case 220: gcode_M220(); break;                              // M220: Set Feedrate Percentage
-      case 221: gcode_M221(); break;                              // M221: Set Flow Percentage
       #if DISABLED(SLIM_1284P)
         case 226: gcode_M226(); break;                              // M226: Wait for Pin State
       #endif
@@ -13324,20 +13020,6 @@ void process_parsed_command() {
         case 300: gcode_M300(); break;                            // M300: Add Tone/Buzz to Queue
       #endif
 
-      #if ENABLED(PIDTEMP)
-        case 301: gcode_M301(); break;                            // M301: Set Hotend PID parameters
-      #endif
-
-      #if ENABLED(PREVENT_COLD_EXTRUSION) && DISABLED(SLIM_1284P)
-        case 302: gcode_M302(); break;                            // M302: Set Minimum Extrusion Temp
-      #endif
-
-      case 303: gcode_M303(); break;                              // M303: PID Autotune
-
-      #if ENABLED(PIDTEMPBED)
-        case 304: gcode_M304(); break;                            // M304: Set Bed PID parameters
-      #endif
-
       #if HAS_MICROSTEPS
         case 350: gcode_M350(); break;                            // M350: Set microstepping mode. Warning: Steps per unit remains unchanged. S code sets stepping mode for all drivers.
         case 351: gcode_M351(); break;                            // M351: Toggle MS1 MS2 pins directly, S# determines MS1 or MS2, X# sets the pin high/low.
@@ -13358,13 +13040,6 @@ void process_parsed_command() {
       #if HAS_BED_PROBE
         case 401: gcode_M401(); break;                            // M401: Deploy Probe
         case 402: gcode_M402(); break;                            // M402: Stow Probe
-      #endif
-
-      #if ENABLED(FILAMENT_WIDTH_SENSOR)
-        case 404: gcode_M404(); break;                            // M404: Set/Report Nominal Filament Width
-        case 405: gcode_M405(); break;                            // M405: Enable Filament Width Sensor
-        case 406: gcode_M406(); break;                            // M406: Disable Filament Width Sensor
-        case 407: gcode_M407(); break;                            // M407: Report Measured Filament Width
       #endif
 
       #if HAS_LEVELING
@@ -13411,11 +13086,6 @@ void process_parsed_command() {
       #endif
       #if ENABLED(DELTA) || ENABLED(X_DUAL_ENDSTOPS) || ENABLED(Y_DUAL_ENDSTOPS) || ENABLED(Z_DUAL_ENDSTOPS)
         case 666: gcode_M666(); break;                            // M666: DELTA/Dual Endstop Adjustment
-      #endif
-
-      #if ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-        case 701: gcode_M701(); break;                            // M701: Load Filament
-        case 702: gcode_M702(); break;                            // M702: Unload Filament
       #endif
 
       #if ENABLED(MAX7219_GCODE)

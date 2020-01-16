@@ -212,71 +212,6 @@ static void lcd_implementation_status_screen() {
   // Status Menu Font
   lcd_setFont(FONT_STATUSMENU);
 
-  //
-  // Fan Animation
-  //
-  // Draws the whole heading image as a B/W bitmap rather than
-  // drawing the elements separately.
-  // This was done as an optimization, as it was slower to draw
-  // multiple parts compared to a single bitmap.
-  //
-  // The bitmap:
-  // - May be offset in X
-  // - Includes all nozzle(s), bed(s), and the fan.
-  //
-  // TODO:
-  //
-  // - Only draw the whole header on the first
-  //   entry to the status screen. Nozzle, bed, and
-  //   fan outline bits don't change.
-  //
-  if (PAGE_UNDER(STATUS_SCREENHEIGHT + 1)) {
-
-    u8g.drawBitmapP(
-      STATUS_SCREEN_X, STATUS_SCREEN_Y,
-      (STATUS_SCREENWIDTH + 7) / 8, STATUS_SCREENHEIGHT,
-      #if HAS_FAN0
-        #if FAN_ANIM_FRAMES > 2
-          fan_frame == 1 ? status_screen1_bmp :
-          fan_frame == 2 ? status_screen2_bmp :
-          #if FAN_ANIM_FRAMES > 3
-            fan_frame == 3 ? status_screen3_bmp :
-          #endif
-        #else
-          blink && fanSpeeds[0] ? status_screen1_bmp :
-        #endif
-      #endif
-      status_screen0_bmp
-    );
-
-  }
-
-  //
-  // Temperature Graphics and Info
-  //
-
-  if (PAGE_UNDER(28)) {
-    // Extruders
-    HOTEND_LOOP() _draw_heater_status(STATUS_SCREEN_HOTEND_TEXT_X(e), e, blink);
-
-    // Heated bed
-    #if HOTENDS < 4 && HAS_HEATED_BED
-      _draw_heater_status(STATUS_SCREEN_BED_TEXT_X, -1, blink);
-    #endif
-
-    #if HAS_FAN0
-      if (PAGE_CONTAINS(STATUS_SCREEN_FAN_TEXT_Y - 7, STATUS_SCREEN_FAN_TEXT_Y)) {
-        // Fan
-        const int16_t per = ((fanSpeeds[0] + 1) * 100) / 256;
-        if (per) {
-          u8g.setPrintPos(STATUS_SCREEN_FAN_TEXT_X, STATUS_SCREEN_FAN_TEXT_Y);
-          lcd_print(itostr3(per));
-          u8g.print('%');
-        }
-      }
-    #endif
-  }
-
   #if ENABLED(SDSUPPORT)
     //
     // SD Card Symbol
@@ -361,14 +296,16 @@ static void lcd_implementation_status_screen() {
   // XYZ Coordinates
   //
 
-  #define XYZ_BASELINE (30 + INFO_FONT_HEIGHT)
+  #define XYZ_BASELINE (1 + INFO_FONT_HEIGHT)
 
   #define X_LABEL_POS  3
   #define X_VALUE_POS 11
   #define XYZ_SPACING 40
 
+  #define SPINDLE_BASELINE XYZ_BASELINE + INFO_FONT_HEIGHT + 3
+
   #if ENABLED(XYZ_HOLLOW_FRAME)
-    #define XYZ_FRAME_TOP 29
+    #define XYZ_FRAME_TOP 0
     #define XYZ_FRAME_HEIGHT INFO_FONT_HEIGHT + 3
   #else
     #define XYZ_FRAME_TOP 30
@@ -429,6 +366,11 @@ static void lcd_implementation_status_screen() {
         u8g.setColorIndex(1); // black on white
       #endif
     }
+  }
+
+  if (PAGE_CONTAINS(SPINDLE_BASELINE - INFO_FONT_HEIGHT, SPINDLE_BASELINE)) {
+    u8g.setPrintPos(X_LABEL_POS, SPINDLE_BASELINE);
+    lcd_print((fanSpeeds[0] > 0) ? "Spindle:  ON" : "Spindle: OFF");
   }
 
   //

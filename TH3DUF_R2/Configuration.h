@@ -657,7 +657,7 @@
 //===========================================================================
 // Wanhao i3 Options - Select 'Sanguino 1284p' from Tools > Board
 //===========================================================================
-//#define WANHAO_I3
+#define WANHAO_I3
 
 // If you are using our EZOut V2 (connected to LCD header) filament sensor kit please follow the install guide
 // and then uncomment the #define EZOUTV2_ENABLE line below.
@@ -806,7 +806,7 @@
 
 // If you want more or less EZABL probe points change the number below (only used if EZABL enabled)
 // Default is 3 which gives you 3x3 grid for a total of 9 points. STICK WITH ODD NUMBERS
-#define EZABL_POINTS 3
+#define EZABL_POINTS 5
 
 // If you want to probe in on the bed more than 15mm change this below. 
 // Do not use 30mm for the Standard CR-10/s or the S4 as you will be on the bed screws.
@@ -940,7 +940,7 @@
 //#define FAN_FIX
 
 // Use your own printer name
-//#define USER_PRINTER_NAME "CHANGE ME" 
+#define USER_PRINTER_NAME "CNC" 
 
 // If your printer is homing to the endstops hard uncomment this to change the homing speed/divisor to make it less aggressive.
 //#define SLOWER_HOMING
@@ -1031,9 +1031,18 @@
 
 #define LCD_LANGUAGE en
 
+#define EZABL_ENABLE
+
+#define X_PROBE_OFFSET_FROM_EXTRUDER 0
+#define Y_PROBE_OFFSET_FROM_EXTRUDER 0
+#define Z_PROBE_OFFSET_FROM_EXTRUDER 0
+
+#define MIN_PROBE_X 30
+#define MIN_PROBE_Y 10
+
 #include "Configuration_beta.h"
 #include "Configuration_backend.h"
 
-#define UNIFIED_VERSION "TH3D U1.R2.21"
+#define UNIFIED_VERSION "TH3D U1.R2.21 CNC"
 
 #endif // CONFIGURATION_H
