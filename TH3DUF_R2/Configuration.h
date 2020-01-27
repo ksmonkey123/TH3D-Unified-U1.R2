@@ -1038,7 +1038,7 @@
 #define Z_PROBE_OFFSET_FROM_EXTRUDER 0
 
 #define MIN_PROBE_X 30
-#define MIN_PROBE_Y 10
+#define MIN_PROBE_Y 55
 
 #include "Configuration_beta.h"
 #include "Configuration_backend.h"

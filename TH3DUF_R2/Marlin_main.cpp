@@ -7125,7 +7125,7 @@ void report_xyz_from_stepper_position() {
 
   inline void gcode_M3_M4(bool is_M3) {
     planner.synchronize();
-    fanSpeeds[0] = 255;
+    fanSpeeds[0] = 128;
   }
 
  /**
@@ -12977,7 +12977,7 @@ void process_parsed_command() {
       case 204: gcode_M204(); break;                              // M204: Set Acceleration
       case 205: gcode_M205(); break;                              // M205: Set Advanced settings
 
-      #if HAS_M206_COMMAND && DISABLED(SLIM_1284P)
+      #if HAS_M206_COMMAND // && DISABLED(SLIM_1284P)
         case 206: gcode_M206(); break;                            // M206: Set Home Offsets
         case 428: gcode_M428(); break;                            // M428: Set Home Offsets based on current position
       #endif
